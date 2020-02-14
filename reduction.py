@@ -4,7 +4,6 @@
 import numpy as np
 from astropy.io import fits
 import fitsio
-import datetime
 
 from astropy.nddata import CCDData
 from astropy.stats import mad_std
@@ -130,6 +129,47 @@ def write_fits(data, filename, header=None):
     return hdu
 
 
+
+def ds9(self, *instance):
+    '''
+    Attach to a given ds9 instance or create a new one.
+    '''
+    if not instance:
+        targets=pyds9.ds9_targets()
+    else:
+        targets=[str(instance[0])]
+    d = pyds9.DS9(targets[0]) if targets else pyds9.DS9()
+    return d
+
+
+def show(self, *imgs, frame=1, target=False):
+    '''
+    Show or append a list of images or filenames in ds9.
+    It is possible to choose a specific frame from which start to append.
+    It is possible to Choose a specific ds9 target process.
+    '''
+    d = self.ds9() if target is False else self.ds9(target)
+    d.set("tile yes")
+
+    # If some images are filenames, get their data first.
+    lst = list(imgs)
+    for i,img in enumerate(lst):
+        if isinstance(img, str):
+            lst[i] = self.load_fits(img)
+        imgs = tuple(lst)
+
+    # If a list of fits is provided
+    if str(frame) in ["first","last","prev","next","current"]:
+        if frame is "current": frame=d.get("frame")
+        d.set("frame "+frame) # set to last
+        frame=d.get("frame") # get the id of last
+
+    for i,img in enumerate(imgs, start=int(frame)):
+        d.set("frame "+str(i))
+        d.set_np2arr(img)
+
+
+
 def oarpaf_mbias(pattern, output_file=None, method='median'):
     '''
     Custom master bias routine.
@@ -202,6 +242,8 @@ def main():
     Main function
     '''
     pattern = sys.argv[1:] # File(s). "1:" stands for "From 1 on".
+
+    # import datetime
 
     # In [357]: clipped=stats.sigma_clip(ccdbias,sigma=3)
     # In [358]: bbb=mbias.xyval(clipped.mask)
