@@ -6,12 +6,16 @@ from astropy.io import fits
 import fitsio
 
 from astropy.nddata import CCDData
+from astropy.modeling.rotations import rotation_matrix
 from astropy.stats import mad_std
+from astropy.wcs import WCS
 import astropy.units as u
 
 from pathlib import Path
 import ccdproc as ccdp
 import matplotlib.pyplot as plt
+
+import pyds9
 
 
 def choose_hdu(filename):
@@ -39,20 +43,24 @@ def get_fits_data_or_header(filename,get):
             return hdul[which_hdu].data;
         else:
             return
-
+        
         
 def get_fits_header(filename):
     '''
     Return the header of the fits file.
-    '''
-    return get_fits_data_or_header(filename,'header')
+    '''    
+    #return get_fits_data_or_header(filename,'header')
+    which_hdu = choose_hdu(filename)
+    return fits.getheader(filename, which_hdu)
 
 
 def get_fits_data(filename):
     '''
     Return the data of the fits file.
     '''
-    return get_fits_data_or_header(filename,'data')
+    #return get_fits_data_or_header(filename,'data')
+    which_hdu = choose_hdu(filename)
+    return fits.getdata(filename, which_hdu)
 
 
 def get_fits_data2(filename):
@@ -129,8 +137,7 @@ def write_fits(data, filename, header=None):
     return hdu
 
 
-
-def ds9(self, *instance):
+def ds9(*instance):
     '''
     Attach to a given ds9 instance or create a new one.
     '''
@@ -142,20 +149,20 @@ def ds9(self, *instance):
     return d
 
 
-def show(self, *imgs, frame=1, target=False):
+def show(*imgs, frame=1, target=False):
     '''
     Show or append a list of images or filenames in ds9.
     It is possible to choose a specific frame from which start to append.
     It is possible to Choose a specific ds9 target process.
     '''
-    d = self.ds9() if target is False else self.ds9(target)
+    d = ds9() if target is False else ds9(target)
     d.set("tile yes")
 
     # If some images are filenames, get their data first.
     lst = list(imgs)
     for i,img in enumerate(lst):
         if isinstance(img, str):
-            lst[i] = self.load_fits(img)
+            lst[i] = get_fits_data(img)
         imgs = tuple(lst)
 
     # If a list of fits is provided
@@ -167,7 +174,6 @@ def show(self, *imgs, frame=1, target=False):
     for i,img in enumerate(imgs, start=int(frame)):
         d.set("frame "+str(i))
         d.set_np2arr(img)
-
 
 
 def oarpaf_mbias(pattern, output_file=None, method='median'):
@@ -211,6 +217,7 @@ def ccdproc_mbias(pattern, output_file=None, method='median'):
 def xyval(arr):
     '''
     Transform a matrix of values in a "x,y,value table". 
+    Slow.
     '''
     y,x = np.indices(arr.shape)
     return x.ravel()+1, y.ravel()+1, arr.ravel()
@@ -229,14 +236,38 @@ def update_keyword(key,valore,pattern):
     By Anna Marini
     Updates or create a keyword/value header pair of a given fits file list.
     '''
-    which_hdu = choose_hdu(filename)
     for filename in pattern:
+        which_hdu = choose_hdu(pattern)
         with fits.open(filename,'update') as hdul:
             header = hdul[which_hdu].header;
             header[key] = valore
             return header
 
 
+def init_wcs(header):
+    '''
+    By Anna Marini
+    Valid for SPM 84cm FITS headers.
+    Updates header with basic WCS keywords to help astrometry.net
+    '''
+    angle = 90 * u.deg
+    plate = 0.25 * header['CCDXBIN']*u.arcsec
+
+    rot_matrix = plate.to(u.deg) * rotation_matrix(angle)[:-1,:-1]
+    coor = SkyCoord(header['RA'], header['DEC'],
+                    unit=(u.hourangle, u.deg),
+                    obstime=Time(header['JD'], format='jd'))
+    w = WCS(header)
+    w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+    w.wcs.crpix = [header['NAXIS1']/2, header['NAXIS2']/2]
+    w.wcs.crval = [coor.ra.degree, coor.dec.degree]
+    w.wcs.cd = rot_matrix.to(u.deg).value
+
+    header.extend(w.to_header(), update=True)    
+
+    return header
+
+    
 def main():    
     '''
     Main function
