@@ -47,7 +47,7 @@ class observatory():
     def filename(self):
         '''Laboratory image file name'''
         return self._filename
-
+    
     @filename.setter # On new file, update data
     def filename(self, value):
         self.header = get_fits_header(value)
@@ -60,12 +60,12 @@ class observatory():
         self.exptime = self.header[self.params['exptime']]
 
 
-    def target(self):
-        if self.in_head('OBJECT'):
-            target = self.header['OBJECT']
-        else:
-            target = None
-        return SkyCoord.from_name(target)
+    # def target(self):
+    #     if self.in_head('OBJECT'):
+    #         target = self.header['OBJECT']
+    #     else:
+    #         target = None
+    #     return SkyCoord.from_name(target)
 
 
     def coordinates(self):
@@ -90,7 +90,7 @@ class observatory():
                 skycoord = SkyCoord.from_name(target)
             else:
                 #example oarpaf: None
-                pass
+                skycoord = None
         return skycoord
 
 
@@ -194,7 +194,11 @@ class observatory():
             humidity = self.header['HUMIDITY']/100
         if self.in_head('ATMOSBAR'):
             pressure = self.header['ATMOSBAR']*u.mbar
-        
+
+
+
+    def fill(self):
+        pass            
         
     
     def config(self, filename=None):
