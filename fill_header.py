@@ -22,6 +22,7 @@ class observatory():
         Set default parameters.
         '''
         # No default filename, header or instrument
+
         self._filename = None
         self.header = None
         self.instrument = None
@@ -30,6 +31,18 @@ class observatory():
         with open('instruments.json') as json_file:
             self.instruments = json.load(json_file)
 
+            
+    def in_head(self, s):
+        '''
+        Check if a keyword is in the header.
+        '''
+        if isinstance(s, list):
+            h = [elem in self.header for elem in s ]
+        else:
+            h = s in self.header
+        return h    
+            
+            
     @property
     def filename(self):
         '''Laboratory image file name'''
@@ -39,19 +52,16 @@ class observatory():
     def filename(self, value):
         self.header = get_fits_header(value)
         self._filename = value
-        if 'INSTRUME' in self.header:
+        if self.in_head('INSTRUME'):
             self.instrument = self.header['INSTRUME']
         else:
             self.instrument = 'default'
         self.params = self.instruments[self.instrument]
         self.exptime = self.header[self.params['exptime']]
 
-    def times(self):
-        pass
-
 
     def target(self):
-        if 'OBJECT' in self.header:
+        if self.in_head('OBJECT'):
             target = self.header['OBJECT']
         else:
             target = None
@@ -75,7 +85,7 @@ class observatory():
                     #example mexman: 18:56:10.8
                     skycoord = SkyCoord(ra=ra, dec=dec,
                                  unit=(u.hourangle, u.deg))
-            elif 'OBJECT' in self.header:
+            elif self.in_head('OBJECT'):
                 target = self.header['OBJECT']
                 skycoord = SkyCoord.from_name(target)
             else:
@@ -89,9 +99,7 @@ class observatory():
         if not value:
             pass # List is empty
         else:
-            if ('LATITUDE' in self.header) \
-           and ('LONGITUD' in self.header) \
-           and ('ALTITUDE' in self.header):
+            if all(self.in_head(['LATITUDE','LONGITUD','ALTITUDE'])):
                 lat = self.header[value['location'][0]]
                 lon = self.header[value['location'][1]]
                 alt = self.header[value['location'][2]]
@@ -100,19 +108,13 @@ class observatory():
                 lon = value['location'][1]
                 alt = value['location'][2]
 
-        if is_number(lat):
-            earthlocation = EarthLocation(lat=lat*u.deg,
-                                          lon=lon*u.deg,
-                                          height=alt*u.m)
-            
-        else:
-            earthlocation = EarthLocation(lat=lat*u.deg,
-                                      lon=lon*u.deg,
-                                      height=alt*u.m)
+            earthlocation = EarthLocation(lat=lat,
+                                          lon=lon,
+                                          height=alt)
 
         return earthlocation
 
-            #if ('OBSERVAT' in self.header):
+            #if (self.in_head('OBSERVAT'):
             #    earthlocation = EarthLocation.of_site(self.header('OBSERVAT'))
             #   earthlocation = EarthLocation.of_address("")
 
@@ -139,13 +141,13 @@ class observatory():
 
     def detector(self):
 
-        if ('CCDXBIN' in self.header) and ('CCDYBIN' in self.header):
+        if all(self.in_head(['CCDXBIN','CCDYBIN'])):
             binning = [self.header['CCDXBIN'],
                        self.header['CCDXBIN']]
-        elif 'CCDSUM' in self.header:
+        elif self.in_head('CCDSUM'):
             binning = list(map(int, self.header['CCDSUM'].split(' ')))
 
-        elif ('XBINNING' in self.header) and ('YBINNING' in self.header):
+        elif all(self.in_head(['XBINNING','YBINNING'])):
             binning = [self.header['XBINNING'],
                        self.header['YBINNING']]
         else:
@@ -157,36 +159,44 @@ class observatory():
     def altaz(self):
         observing_location = self.location()
         observing_time = self.times()
-        aa = AltAz(location=observing_location, obstime=observing_time)
+        altaz = AltAz(location=observing_location, obstime=observing_time)
         
-        object_radec = self.coordinates()
-        object_altaz = object_radec.transform_to(aa)
+        target_radec = self.coordinates()
+        target_altaz = target_radec.transform_to(altaz)
         
-        zdist = object_altaz.zen    # only in dfosc
-        airmass = object_altaz.secz # only in mexman
+        if self.in_head('ZDIST'):
+            zdist = self.header['ZDIST'] # example: dfosc
+        else:
+            zdist = target_altaz.zen
+
+        if self.in_head('AIRMASS'):
+            airmass = self.header['AIRMASS'] # example: mexman
+        else:
+            airmass = target_altaz.secz
 
         sun_radec = get_sun(observing_time)
-        sun_altaz = sun_radec.transform_to(aa)
+        sun_altaz = sun_radec.transform_to(altaz)
     
         moon_radec = get_moon(observing_time)
-        moon_altaz = moon_radec.transform_to(aa)
+        moon_altaz = moon_radec.transform_to(altaz)
 
-        return aa
-
+        return altaz
+    
 
     def meteo(self):
         temperature = None  # 20*u.Celsius
         humidity = None # 0-1
         pressure = None    # 1000*u.hpa
         wavelength = None  # 550*u.nm
-        if ('XTEMP' in self.header):
+        if self.in_head('XTEMP'):
             temperature = self.header['XTEMP']*u.Celsius
-        if ('HUMIDITY' in self.header):
+        if self.in_head('HUMIDITY'):
             humidity = self.header['HUMIDITY']/100
-        if ('ATMOSBAR' in self.header):
+        if self.in_head('ATMOSBAR'):
             pressure = self.header['ATMOSBAR']*u.mbar
         
-
+        
+    
     def config(self, filename=None):
         if filename is not None:
             self.filename = filename
@@ -197,6 +207,7 @@ class observatory():
         self.altaz()
         self.meteo()
 
+               
         
     # # json array
     # [item for item in j if item.get('id')=='Mexman'
