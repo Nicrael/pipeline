@@ -15,6 +15,7 @@ import json
 # Our modules
 from reduction import get_fits_header, is_number
 
+    
 class observatory():
 
     def __init__(self,filename=None):
@@ -22,27 +23,27 @@ class observatory():
         Set default parameters.
         '''
         # No default filename, header or instrument
-
         self._filename = None
         self.header = None
         self.instrument = None
         self.params = None
 
+        
         with open('instruments.json') as json_file:
             self.instruments = json.load(json_file)
+        
+    
+    def config(self, filename=None):
+        if filename is not None:
+            self.filename = filename
+        self.coordinates()
+        self.location()
+        self.times()
+        self.detector()
+        self.meteo()
+        self.altaz()
 
-            
-    def in_head(self, s):
-        '''
-        Check if a keyword is in the header.
-        '''
-        if isinstance(s, list):
-            h = [elem in self.header for elem in s ]
-        else:
-            h = s in self.header
-        return h    
-            
-            
+        
     @property
     def filename(self):
         '''Laboratory image file name'''
@@ -91,11 +92,18 @@ class observatory():
             else:
                 #example oarpaf: None
                 skycoord = None
+                
+        # for header
+        self.ra = skycoord.ra.to_string(unit="hourangle",sep=":")
+        self.dec = skycoord.dec.to_string(sep=":")
+        self.radeg = skycoord.ra.deg
+        self.decdeg = skycoord.dec.deg
+
         return skycoord
 
 
     def location(self):
-        value=self.params
+        value = self.params
         if not value:
             pass # List is empty
         else:
@@ -112,15 +120,19 @@ class observatory():
                                           lon=lon,
                                           height=alt)
 
-        return earthlocation
-
+            self.lat = earthlocation.lat.to_string(sep=":")
+            self.lon = earthlocation.lon.to_string(sep=":")
+            self.altitude = int(earthlocation.height.to_value())
+            
             #if (self.in_head('OBSERVAT'):
             #    earthlocation = EarthLocation.of_site(self.header('OBSERVAT'))
             #   earthlocation = EarthLocation.of_address("")
+           
+        return earthlocation
 
 
     def times(self):
-        value=self.params
+        value = self.params
         if not value:
             pass # List is empty
         else:
@@ -136,6 +148,11 @@ class observatory():
             else:
                 pass
             
+            # for header
+            self.mjd = obstime.mjd 
+            self.jd = obstime.jd
+            self.dateobs = obstime.isot
+           
         return obstime
 
 
@@ -153,65 +170,74 @@ class observatory():
         else:
             binning = [1, 1]
 
-        return binning
+        # for header
+        self.binning = binning
+
+        
+    def meteo(self):
+        self.temperature = None  # 20*u.Celsius
+        self.humidity = None # 0-1
+        self.pressure = None    # 1000*u.hpa
+        self.wavelength = None  # 550*u.nm
+        if self.in_head('XTEMP'):
+            self.temperature = self.header['XTEMP']
+        if self.in_head('HUMIDITY'):
+            self.humidity = self.header['HUMIDITY']/100
+        if self.in_head('ATMOSBAR'):
+            self.pressure = self.header['ATMOSBAR']
 
 
-    def altaz(self):
+    def altaz(self):        
         observing_location = self.location()
         observing_time = self.times()
-        altaz = AltAz(location=observing_location, obstime=observing_time)
+        generic_altaz = AltAz(location=observing_location,
+                      obstime=observing_time)
+
+        #add meteo stuff for altaz
         
         target_radec = self.coordinates()
-        target_altaz = target_radec.transform_to(altaz)
+        target_altaz = target_radec.transform_to(generic_altaz)
         
         if self.in_head('ZDIST'):
             zdist = self.header['ZDIST'] # example: dfosc
         else:
-            zdist = target_altaz.zen
+            zdist = target_altaz.zen.deg
 
         if self.in_head('AIRMASS'):
             airmass = self.header['AIRMASS'] # example: mexman
         else:
-            airmass = target_altaz.secz
+            airmass = target_altaz.secz.value
 
         sun_radec = get_sun(observing_time)
-        sun_altaz = sun_radec.transform_to(altaz)
-    
+        sun_altaz = sun_radec.transform_to(generic_altaz)
         moon_radec = get_moon(observing_time)
-        moon_altaz = moon_radec.transform_to(altaz)
+        moon_altaz = moon_radec.transform_to(generic_altaz)
 
-        return altaz
-    
-
-    def meteo(self):
-        temperature = None  # 20*u.Celsius
-        humidity = None # 0-1
-        pressure = None    # 1000*u.hpa
-        wavelength = None  # 550*u.nm
-        if self.in_head('XTEMP'):
-            temperature = self.header['XTEMP']*u.Celsius
-        if self.in_head('HUMIDITY'):
-            humidity = self.header['HUMIDITY']/100
-        if self.in_head('ATMOSBAR'):
-            pressure = self.header['ATMOSBAR']*u.mbar
-
-
-
-    def fill(self):
-        pass            
+        # for header
+        self.alt = target_altaz.alt.deg
+        self.az = target_altaz.az.deg
+        self.airmass = airmass
+        self.zdist = zdist
+        self.sunalt = sun_altaz.alt.deg
+        self.sundist = sun_radec.separation(target_radec).deg
+        self.moonalt = moon_altaz.alt.deg 
+        self.moondist = moon_radec.separation(target_radec).deg
         
-    
-    def config(self, filename=None):
-        if filename is not None:
-            self.filename = filename
-        self.coordinates()
-        self.location()
-        self.times()
-        self.detector()
-        self.altaz()
-        self.meteo()
+        return generic_altaz
 
-               
+            
+    def in_head(self, s):
+        '''
+        Check if a keyword is in the header.
+        '''
+        if isinstance(s, list):
+            h = [elem in self.header for elem in s ]
+        else:
+            h = s in self.header
+        return h    
+
+
+    
         
     # # json array
     # [item for item in j if item.get('id')=='Mexman'
@@ -223,9 +249,6 @@ class observatory():
 
 
 # Mettere tutto il JSON in un oggetto Python per poter trattare i dati come credi
-class payload(object):
-    def __init__(self, data):
-        self.__dict__ = json.loads(data)
 
 
 # def fill_header(filename):
@@ -260,8 +283,10 @@ def main():
     Main function
     '''
     pattern = sys.argv[1:] # "1:" stands for "From 1 on".
-    show(pattern)
-
+    for filename in pattern:
+        o=observatory()
+        o.config(filename)
+        print(o.__dict__)
 
 if __name__ == '__main__':
     '''
