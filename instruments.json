@@ -1,0 +1,43 @@
+{
+    
+    "Mexman" : {
+        "location": ["LATITUDE", "LONGITUD", "ALTITUDE"],
+        "exptime" : "EXPTIME",
+        "obstime" : "JD",
+        "ra"      : "RA",
+        "dec"     : "DEC",
+        "binning" : ["CCDXBIN", "CCDYBIN"],
+        "gain"    : 3.82,
+        "ron"     : 1.8,
+        "scale"   : null,
+        "comment" : ""
+    },
+
+    "DFOSC_FASU" : {
+        "location": ["-29:15:27.8194", "-70:44:14.7926", "2375"],
+        "exptime" : "EXPTIME",
+        "obstime" : "MJD-OBS",
+        "ra"      : "RA",
+        "dec"     : "DEC",
+        "gain"    : null,
+        "ron"     : null,
+        "scale"   : null,
+        "binning" : null,
+        "comment" : ""
+    },
+
+    "SBIG STL-11000 3 CCD Camera" : {
+        "location": [44.59106605, 9.20344862, 1480],
+        "exptime" : "EXPTIME",
+        "obstime" : "JD",
+        "ra"      : null,
+        "dec"     : null,
+        "gain"    : "EGAIN",
+        "ron"     : 11,
+        "scale"   : null,
+        "binning" : ["XBINNING", "YBINNING"],
+        "comment" : ""
+    },
+    
+    "default" : null
+}

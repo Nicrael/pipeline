@@ -1,0 +1,183 @@
+{
+    
+    "Mexman" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "JD",
+        "ra"      : "RA",
+        "dec"     : "DEC",
+        "location": ["LATITUDE", "LONGITUD", "ALTITUDE"],
+        "comment" : ""
+    },
+
+    "SBIG STL-11000 3 CCD Camera" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "JD",
+        "ra"      : null,
+        "dec"     : null,
+        "location": [44.59106605, 9.20344862, 1480],
+        "comment" : ""
+    },
+
+    "DFOSC_FASU" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "MJD-OBS",
+        "ra"      : "RA",
+        "dec"     : "DEC",
+        "location": ["-29:15:27.8194", "-70:44:14.7926", "2375"],
+        "comment" : ""
+    },
+
+    "danish alternative" : {
+        "exptime" : "EXPTIME",
+        "obstime" : ["DATE-OBS", "TM_START"],
+        "ra"      : "RA",
+        "dec"     : "DEC",
+        "location": null,
+        "comment" : ""
+    },
+
+    "dk2" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "DATE-OBS",
+        "ra"      : "OBJRA",
+        "dec"     : "OBJDEC",
+        "location": null,
+        "comment" : ""
+    },
+
+    "danish lucky imaging" : {
+        "exptime" : "EXP_COMB",
+        "obstime" : "MJD_ST",
+        "ra"      : "TEL_RA",
+        "dec"     : "TEL_DEC",
+        "location": null,
+        "comment" : ""
+    },
+
+    "efosc" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "MJD-OBS",
+        "ra"      : "RA",
+        "dec"     : "DEC",
+        "location": null,
+        "comment" : ""
+    },
+
+    "acam" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "MJD-OBS",
+        "ra"      : "CAT-RA",
+        "dec"     : "CAT-DEC",
+        "location": null,
+        "comment" : ""
+    },
+
+    "rise" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "DATE-OBS",
+        "ra"      : "CAT-RA",
+        "dec"     : "CAT-DEC",
+        "location": null,
+        "comment" : ""
+    },
+
+    "loiano" : {
+        "exptime" : "EXPTIME",
+        "obstime" : ["DATE-OBS", "TM-GPS"],
+        "ra"      : "RA",
+        "dec"     : "DEC",
+        "location": null,
+        "comment" : ""
+    },
+
+    "loiano 60cm" : {
+        "exptime" : "EXPOSURE",
+        "obstime" : "JD",
+        "ra"      : null,
+        "dec"     : null,
+        "location": null,
+        "comment" : ""
+    },
+
+    "loiano 60cm FLI" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "DATE-OBS",
+        "ra"      : null,
+        "dec"     : null,
+        "location": null,
+        "comment" : ""
+    },
+
+    "busca" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "JULIAN",
+        "ra"      : "RA",
+        "dec"     : "DEC",
+        "location": null,
+        "comment" : ""
+    },
+
+    "grond" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "MJD-OBS",
+        "ra"      : "RA",
+        "dec"     : "DEC",
+        "location": null,
+        "comment" : ""
+    },
+
+    "tug-100" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "JD",
+        "ra"      : "OBJCTRA",
+        "dec"     : "OBJCTDEC",
+        "location": null,
+        "comment" : ""
+    },
+
+    "lbc" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "DATE_OBS",
+        "ra"      : "OBJRA",
+        "dec"     : "OBJDEC",
+        "location": null,
+        "comment" : ""
+    },
+
+    "martinelli" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "JD",
+        "ra"      : null,
+        "dec"     : null,
+        "location": null,
+        "comment" : ""
+    },
+
+    "saao 1m" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "MJD-OBS",
+        "ra"      : "RA_OBS",
+        "dec"     : "DEC_OBS",
+        "location": null,
+        "comment" : ""
+    },
+
+    "fastcam" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "JD",
+        "ra"      : null,
+        "dec"     : null,
+        "location": null,
+        "comment" : ""
+    },
+
+    "default" : {
+        "exptime" : "EXPTIME",
+        "obstime" : "DATE-OBS",
+        "ra"      : "RA",
+        "dec"     : "DEC",
+        "location": null,
+        "comment" : ""
+    }
+    
+}

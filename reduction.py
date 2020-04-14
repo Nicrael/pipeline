@@ -1,21 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import numpy as np
+# System modules
+from astropy.coordinates import SkyCoord
 from astropy.io import fits
-import fitsio
-
-from astropy.nddata import CCDData
 from astropy.modeling.rotations import rotation_matrix
+from astropy.nddata import CCDData
 from astropy.stats import mad_std
+from astropy.time import Time
 from astropy.wcs import WCS
 import astropy.units as u
-
-from pathlib import Path
-import ccdproc as ccdp
-import matplotlib.pyplot as plt
-
-import pyds9
+import numpy as np
 
 
 def choose_hdu(filename):
@@ -63,15 +58,15 @@ def get_fits_data(filename):
     return fits.getdata(filename, which_hdu)
 
 
-def get_fits_data2(filename):
-    '''
-    Return the data of the fits file. 
-    Alternative method based on fitsio.
-    '''
-    which_hdu = choose_hdu(filename)
-    with fitsio.FITS(filename) as f:
-        data = f[which_hdu].read()
-        return data
+# def get_fits_data2(filename):
+#     '''
+#     Return the data of the fits file. 
+#     Alternative method based on fitsio.
+#     '''
+#     which_hdu = choose_hdu(filename)
+#     with fitsio.FITS(filename) as f:
+#         data = f[which_hdu].read()
+#         return data
 
     
 def join_fits_header(pattern):
@@ -137,45 +132,6 @@ def write_fits(data, filename, header=None):
     return hdu
 
 
-def ds9(*instance):
-    '''
-    Attach to a given ds9 instance or create a new one.
-    '''
-    if not instance:
-        targets=pyds9.ds9_targets()
-    else:
-        targets=[str(instance[0])]
-    d = pyds9.DS9(targets[0]) if targets else pyds9.DS9()
-    return d
-
-
-def show(*imgs, frame=1, target=False):
-    '''
-    Show or append a list of images or filenames in ds9.
-    It is possible to choose a specific frame from which start to append.
-    It is possible to Choose a specific ds9 target process.
-    '''
-    d = ds9() if target is False else ds9(target)
-    d.set("tile yes")
-
-    # If some images are filenames, get their data first.
-    lst = list(imgs)
-    for i,img in enumerate(lst):
-        if isinstance(img, str):
-            lst[i] = get_fits_data(img)
-        imgs = tuple(lst)
-
-    # If a list of fits is provided
-    if str(frame) in ["first","last","prev","next","current"]:
-        if frame is "current": frame=d.get("frame")
-        d.set("frame "+frame) # set to last
-        frame=d.get("frame") # get the id of last
-
-    for i,img in enumerate(imgs, start=int(frame)):
-        d.set("frame "+str(i))
-        d.set_np2arr(img)
-
-
 def oarpaf_mbias(pattern, output_file=None, method='median'):
     '''
     Custom master bias routine.
@@ -197,21 +153,33 @@ def oarpaf_mbias(pattern, output_file=None, method='median'):
     return combined_data
 
 
-def ccdproc_mbias(pattern, output_file=None, method='median'):
+def is_number(s):
     '''
-    CCDproc-based master bias routine.
-    Calculates the master bias of a list of of fits files.
-    Default combining method is median.
-    No output file is provided by default.
+    Check if a string contains a (float) number. 
+    Useful to test decimal or sexagesimal coordinates.
     '''
-    combined_data = ccdp.combine(pattern, method=method, unit=u.adu,
-                                 dtype=np.uint16, mem_limit=150e6)
-    # sigma_clip=True, sigma_clip_low_thresh=5, sigma_clip_high_thresh=5,
-    # sigma_clip_func=np.ma.median, signma_clip_dev_func=mad_std)
-    #combined_bias.meta['combined'] = True
-    if output_file is not None:
-        combined_bias.write(output_file, overwrite=True)
-    return combined_data
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+    
+
+# def ccdproc_mbias(pattern, output_file=None, method='median'):
+#     '''
+#     CCDproc-based master bias routine.
+#     Calculates the master bias of a list of of fits files.
+#     Default combining method is median.
+#     No output file is provided by default.
+#     '''
+#     combined_data = ccdp.combine(pattern, method=method, unit=u.adu,
+#                                  dtype=np.uint16, mem_limit=150e6)
+#     # sigma_clip=True, sigma_clip_low_thresh=5, sigma_clip_high_thresh=5,
+#     # sigma_clip_func=np.ma.median, signma_clip_dev_func=mad_std)
+#     #combined_bias.meta['combined'] = True
+#     if output_file is not None:
+#         combined_bias.write(output_file, overwrite=True)
+#     return combined_data
 
 
 def xyval(arr):
@@ -283,10 +251,10 @@ def main():
 
     # dfits ~/desktop/oarpaf/test-sbig-stx/*.fits | fitsort IMAGETYP NAXIS1 DATE-OBS | grep 'Bias' |grep '4096' |grep '2019-11-22' | awk '{print $1}'
 
-    # a = datetime.datetime.now()
-    # oarpaf_mbias(pattern)
-    # b = datetime.datetime.now()
-    # c = b - a ; print(c.total_seconds())
+    #a = datetime.datetime.now()
+    oarpaf_mbias(pattern)
+    #b = datetime.datetime.now()
+    #c = b - a ; print(c.total_seconds())
 
     # a = datetime.datetime.now()
     # ccdproc_mbias(pattern)
