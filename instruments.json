@@ -9,7 +9,7 @@
         "binning" : ["CCDXBIN", "CCDYBIN"],
         "gain"    : 3.82,
         "ron"     : 1.8,
-        "scale"   : null,
+        "scale"   : 0.25,
         "comment" : ""
     },
 
@@ -21,7 +21,7 @@
         "dec"     : "DEC",
         "gain"    : null,
         "ron"     : null,
-        "scale"   : null,
+        "scale"   : 0.39,
         "binning" : null,
         "comment" : ""
     },
@@ -34,7 +34,7 @@
         "dec"     : null,
         "gain"    : "EGAIN",
         "ron"     : 11,
-        "scale"   : null,
+        "scale"   : 0.22,
         "binning" : ["XBINNING", "YBINNING"],
         "comment" : ""
     },

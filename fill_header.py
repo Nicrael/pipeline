@@ -99,15 +99,15 @@ class observatory():
 
 
     def location(self):
-        value = self.params
+        param = self.params['location']
         if all(self.in_head(['LATITUDE','LONGITUD','ALTITUDE'])):
-            lat = self.header[value['location'][0]]
-            lon = self.header[value['location'][1]]
-            alt = self.header[value['location'][2]]
+            lat = self.header[param[0]]
+            lon = self.header[param[1]]
+            alt = self.header[param[2]]
         else:
-            lat = value['location'][0]
-            lon = value['location'][1]
-            alt = value['location'][2]
+            lat = param[0]
+            lon = param[1]
+            alt = param[2]
 
         earthlocation = EarthLocation(lat=lat,
                                       lon=lon,
@@ -125,15 +125,15 @@ class observatory():
 
 
     def times(self):
-        value = self.params
-        timekey = self.header[value['obstime']]
-        if 'MJD' in value['obstime']:
+        param = self.params['obstime']
+        timekey = self.header[param]
+        if 'MJD' in value:
             obstime = Time(timekey, format='mjd')
-        elif value['obstime'] == 'JD':
+        elif param == 'JD':
             obstime = Time(timekey, format='jd')
-        elif 'DATE' in value['obstime']:
+        elif 'DATE' in param:
             obstime = Time(timekey)
-        elif isinstance(value['obstime'], list):
+        elif isinstance(param, list):
             obstime = Time(Time(timekey[0]).unix+timekey[1])
         else:
             pass
@@ -256,6 +256,7 @@ class observatory():
             h = s in self.header
         return h    
 
+    
 
 def main():
     '''

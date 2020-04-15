@@ -163,6 +163,7 @@ def is_number(s):
         return True
     except ValueError:
         return False
+
     
 
 # def ccdproc_mbias(pattern, output_file=None, method='median'):
@@ -199,17 +200,40 @@ def xyfilter(arr,value=True):
     return arr[0][arr[2]],arr[1][arr[2]]
 
 
-def update_keyword(key,valore,pattern):
+# def update_keyword(key,valore,pattern):
+#     '''
+#     By Anna Marini
+#     Updates or create a keyword/value header pair of a given fits file list.
+#     '''
+#     for filename in pattern:
+#         which_hdu = choose_hdu(pattern)
+#         with fits.open(filename,'update') as hdul:
+#             header = hdul[which_hdu].header;
+#             header[key] = valore
+#             return header
+
+
+def update_keyword(header, key, *tup, comment=None):
     '''
     By Anna Marini
     Updates or create a keyword/value header pair of a given fits file list.
     '''
-    for filename in pattern:
-        which_hdu = choose_hdu(pattern)
-        with fits.open(filename,'update') as hdul:
-            header = hdul[which_hdu].header;
-            header[key] = valore
-            return header
+    value = tup[0].upper()
+    time = Time.now()
+    com = time.isot[:-4]+" "
+    
+    if key not in header or not header[key]:
+        com += "Created "+key+". "
+    else:
+        com += "Updated "+key+". Old value: "+header[key]+". "
+
+    if comment is not None:
+        com += comment
+        
+    header[key] = tup
+    header['comment'] = com
+
+    return header
 
 
 def init_wcs(header):
