@@ -127,7 +127,7 @@ class observatory():
     def times(self):
         param = self.params['obstime']
         timekey = self.header[param]
-        if 'MJD' in value:
+        if 'MJD' in param:
             obstime = Time(timekey, format='mjd')
         elif param == 'JD':
             obstime = Time(timekey, format='jd')
