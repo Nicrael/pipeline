@@ -8,6 +8,7 @@
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord
 from astropy.coordinates import get_sun, get_moon
 from astropy.time import Time
+from astropy.wcs import WCS
 import astropy.units as u
 import numpy as np
 import json
@@ -27,10 +28,13 @@ class observatory():
         self.header = None
         self.instrument = None
         self.params = None
-
         
         with open('instruments.json') as json_file:
             self.instruments = json.load(json_file)
+            # # json array
+            # [item for item in j if item.get('id')=='Mexman'            
+            # # json object
+            # j['Mexman']
         
     
     def config(self, filename=None):
@@ -42,6 +46,8 @@ class observatory():
         self.detector()
         self.meteo()
         self.altaz()
+        self.wcs()
+        #self.header.extend(w.to_header(), update=True)
 
         
     @property
@@ -61,37 +67,26 @@ class observatory():
         self.exptime = self.header[self.params['exptime']]
 
 
-    # def target(self):
-    #     if self.in_head('OBJECT'):
-    #         target = self.header['OBJECT']
-    #     else:
-    #         target = None
-    #     return SkyCoord.from_name(target)
-
-
     def coordinates(self):
-        value=self.params
-        if not value:
-            pass # List is empty
-        else:
-            if value['ra'] and value['dec']:
-                ra  = self.header[value['ra']]
-                dec = self.header[value['dec']]
+        value = self.params
+        if value['ra'] and value['dec']:
+            ra  = self.header[value['ra']]
+            dec = self.header[value['dec']]
 
-                if is_number(ra):
-                    #example dfosc: 14.32572
-                    skycoord = SkyCoord(ra=ra, dec=dec,
-                                 unit=(u.deg, u.deg))
-                else:
-                    #example mexman: 18:56:10.8
-                    skycoord = SkyCoord(ra=ra, dec=dec,
-                                 unit=(u.hourangle, u.deg))
-            elif self.in_head('OBJECT'):
-                target = self.header['OBJECT']
-                skycoord = SkyCoord.from_name(target)
+            if is_number(ra):
+                #example dfosc: 14.32572
+                skycoord = SkyCoord(ra=ra, dec=dec,
+                                    unit=(u.deg, u.deg))
             else:
-                #example oarpaf: None
-                skycoord = None
+                #example mexman: 18:56:10.8
+                skycoord = SkyCoord(ra=ra, dec=dec,
+                                    unit=(u.hourangle, u.deg))
+        elif self.in_head('OBJECT'):
+            target = self.header['OBJECT']
+            skycoord = SkyCoord.from_name(target)
+        else:
+            #example oarpaf: None
+            skycoord = None
                 
         # for header
         self.ra = skycoord.ra.to_string(unit="hourangle",sep=":")
@@ -99,59 +94,54 @@ class observatory():
         self.radeg = skycoord.ra.deg
         self.decdeg = skycoord.dec.deg
 
+        self.skycoord = skycoord 
         return skycoord
 
 
     def location(self):
         value = self.params
-        if not value:
-            pass # List is empty
+        if all(self.in_head(['LATITUDE','LONGITUD','ALTITUDE'])):
+            lat = self.header[value['location'][0]]
+            lon = self.header[value['location'][1]]
+            alt = self.header[value['location'][2]]
         else:
-            if all(self.in_head(['LATITUDE','LONGITUD','ALTITUDE'])):
-                lat = self.header[value['location'][0]]
-                lon = self.header[value['location'][1]]
-                alt = self.header[value['location'][2]]
-            else:
-                lat = value['location'][0]
-                lon = value['location'][1]
-                alt = value['location'][2]
+            lat = value['location'][0]
+            lon = value['location'][1]
+            alt = value['location'][2]
 
-            earthlocation = EarthLocation(lat=lat,
-                                          lon=lon,
-                                          height=alt)
+        earthlocation = EarthLocation(lat=lat,
+                                      lon=lon,
+                                      height=alt)
 
-            self.lat = earthlocation.lat.to_string(sep=":")
-            self.lon = earthlocation.lon.to_string(sep=":")
-            self.altitude = int(earthlocation.height.to_value())
+        self.lat = earthlocation.lat.to_string(sep=":")
+        self.lon = earthlocation.lon.to_string(sep=":")
+        self.altitude = int(earthlocation.height.to_value())
             
-            #if (self.in_head('OBSERVAT'):
-            #    earthlocation = EarthLocation.of_site(self.header('OBSERVAT'))
-            #   earthlocation = EarthLocation.of_address("")
+        #if (self.in_head('OBSERVAT'):
+        #    earthlocation = EarthLocation.of_site(self.header('OBSERVAT'))
+        #   earthlocation = EarthLocation.of_address("")
            
         return earthlocation
 
 
     def times(self):
         value = self.params
-        if not value:
-            pass # List is empty
+        timekey = self.header[value['obstime']]
+        if 'MJD' in value['obstime']:
+            obstime = Time(timekey, format='mjd')
+        elif value['obstime'] == 'JD':
+            obstime = Time(timekey, format='jd')
+        elif 'DATE' in value['obstime']:
+            obstime = Time(timekey)
+        elif isinstance(value['obstime'], list):
+            obstime = Time(Time(timekey[0]).unix+timekey[1])
         else:
-            timekey = self.header[value['obstime']]
-            if 'MJD' in value['obstime']:
-                obstime = Time(timekey, format='mjd')
-            elif value['obstime'] == 'JD':
-                obstime = Time(timekey, format='jd')
-            elif 'DATE' in value['obstime']:
-                obstime = Time(timekey)
-            elif isinstance(value['obstime'], list):
-                obstime = Time(Time(timekey[0]).unix+timekey[1])
-            else:
-                pass
+            pass
             
-            # for header
-            self.mjd = obstime.mjd 
-            self.jd = obstime.jd
-            self.dateobs = obstime.isot
+        # for header
+        self.mjd = obstime.mjd 
+        self.jd = obstime.jd
+        self.dateobs = obstime.isot
            
         return obstime
 
@@ -172,7 +162,7 @@ class observatory():
 
         # for header
         self.binning = binning
-
+        self.scale = self.params["scale"] if self.params["scale"] is not None else 1 
         
     def meteo(self):
         self.temperature = None  # 20*u.Celsius
@@ -191,11 +181,10 @@ class observatory():
         observing_location = self.location()
         observing_time = self.times()
         generic_altaz = AltAz(location=observing_location,
-                      obstime=observing_time)
-
+                              obstime=observing_time)
         #add meteo stuff for altaz
         
-        target_radec = self.coordinates()
+        target_radec = self.skycoord
         target_altaz = target_radec.transform_to(generic_altaz)
         
         if self.in_head('ZDIST'):
@@ -225,6 +214,37 @@ class observatory():
         
         return generic_altaz
 
+    def wcs(self):
+        '''From Anna Marini.
+        Provides WCS keywords to convert pixel coordinates of the files
+        to sky coordinates. It uses the rotational matrix obtained in previous
+        function (which_instrument)'''
+
+        plate = (self.scale * self.binning[0])/3600
+        angle = 0
+        flip = 1
+        if self.instrument == 'Mexman':
+            angle = np.pi/2
+            flip = -1
+            
+        cd = np.array([[plate*np.cos(angle), plate*np.sin(angle)*flip],
+                       [plate*np.sin(angle), plate*np.cos(angle)]])
+
+
+        w = WCS(self.header)
+
+        w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+        w.wcs.cd = cd
+
+        w.wcs.crval = [self.skycoord.ra.deg,
+                       self.skycoord.dec.deg]
+        w.wcs.crpix = [self.header['NAXIS1']/2,
+                       self.header['NAXIS2']/2]
+        #o, in alternativa, x_target e y_target date in input
+
+        self.w = w
+        return w
+
             
     def in_head(self, s):
         '''
@@ -235,47 +255,6 @@ class observatory():
         else:
             h = s in self.header
         return h    
-
-
-    
-        
-    # # json array
-    # [item for item in j if item.get('id')=='Mexman'
-
-    # # json object
-    # j['Mexman']
-
-
-
-
-# Mettere tutto il JSON in un oggetto Python per poter trattare i dati come credi
-
-
-# def fill_header(filename):
-
-#     observing_location = EarthLocation(lat=41.3*u.deg,
-#                                        lon=-74*u.deg,
-#                                        height=100*u.m)
-
-#     observing_time = Time('2017-02-05 20:12:18')
-#     aa = AltAz(location=observing_location, obstime=observing_time)
-
-#     obj_radec = SkyCoord('4h42m', '-38d6m50.8s')
-#     obj_altaz = object_radec.transform_to(aa)
-
-#     temperature = None # 20*u.Celsius
-#     pressure = None    # 1000*u.hpa
-#     humidity = None    # 0.2
-#     wavelength = None  # 550*u.nm
-
-#     zdist = object_altaz.zen # only in dfosc
-#     airmass = object_altaz.secz # only in mexman
-
-#     sun_radec = get_sun(observing_time)
-#     sun_altaz = sun_radec.transform_to(aa)
-
-#     moon_radec = get_moon(observing_time)
-#     moon_altaz = moon_radec.transform_to(aa)
 
 
 def main():
