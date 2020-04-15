@@ -12,8 +12,8 @@
         { "name" :  "observer",                         "format" : "%s"  ,                 "comment" : "Name of observer" },
         { "name" :  "pi-coi",                           "format" : "%s"  ,                 "comment" : "Name(s) of proposer(s)" },
         { "name" :  "exptime",                          "format" : "%.6f", "unit" : "s",   "comment" : "[s] Exposure time" },
-        { "name" :  "ra",                               "format" : "%.6f", "unit" : "deg", "comment" : "[deg] %HOURANG RA (J2000.0) pointin" },
-        { "name" :  "dec",                              "format" : "%.5f", "unit" : "deg", "comment" : "[deg] %DEGREE DEC (J2000.0) pointin" },
+        { "name" :  "ra",                               "format" : "%.6f", "unit" : "deg", "comment" : "[deg] %HOURANG RA (J2000.0) pointing" },
+        { "name" :  "dec",                              "format" : "%.5f", "unit" : "deg", "comment" : "[deg] %DEGREE DEC (J2000.0) pointing" },
         { "name" :  "equinox",                          "format" : "%.0f", "unit" : "y",   "comment" : "[y] Standard FK5" },
         { "name" :  "radecsys",   "default" : "FK5",    "format" : "%s"  ,                 "comment" : "FK5" },
         { "name" :  "date",                             "format" : "%s"  ,                 "comment" : "Date this file was written" },
@@ -41,6 +41,7 @@
     ],
 
     "hierarch": [
+        
         { "name" :  "tel id",                           "format" : "%30s",                 "comment" : "Telescope Control SW ID" },
         { "name" :  "tel name",                         "format" : "%30s",                 "comment" : "Telescope Control SW name" },
         { "name" :  "tel date",                         "format" : "%10s",                 "comment" : "TCS installation date" },
