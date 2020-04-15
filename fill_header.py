@@ -256,6 +256,30 @@ class observatory():
             h = s in self.header
         return h    
 
+
+    def testarray(self):
+        with open('cerbero-merged-array.json') as cm:
+            ccc = json.load(cm)
+
+        aaa = fits.PrimaryHDU()
+
+        for item in ccc['primary'] :
+            key = item['name']
+            #if any([var.startswith('%') for var in ccc['primary'][key]['comment'].split()]): # variable in comment
+            if 'default' in item:
+                aaa.header[key] = (item['default'], item['comment'])
+            else:
+                aaa.header[key] = ('        ', item['comment'])
+
+        for item in ccc['hierarch'] :
+            key = "HIERARCH OARPAF "+item['name'].upper()
+            if 'default' in item:
+                aaa.header[key] = (item['default'], item['comment'])
+            else:
+                aaa.header[key] = ('        ', item['comment'])
+
+                
+                                  
     
 
 def main():
