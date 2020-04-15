@@ -220,18 +220,18 @@ def update_keyword(header, key, *tup, comment=None):
     '''
     value = tup[0].upper()
     time = Time.now()
-    com = time.isot[:-4]+" "
+    hist = time.isot[:-4]+" "
     
     if key not in header or not header[key]:
-        com += "Created "+key+". "
+        hist += "Created "+key+". "
     else:
-        com += "Updated "+key+". Old value: "+header[key]+". "
+        hist += "Updated "+key+". Old value: "+header[key]+". "
 
     if comment is not None:
-        com += comment
+        hist += comment
         
     header[key] = tup
-    header['comment'] = com
+    header['history'] = hist
 
     return header
 
