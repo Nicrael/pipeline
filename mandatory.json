@@ -1,0 +1,256 @@
+
+
+    SIMPLE =           T   / Standard FITS
+    BITPIX =          %d   / # of bits per pix value
+    NAXIS =           %d   / # of axes in data array
+    NAXIS1 =          %d   / # of pixels in axis1
+    NAXIS2 =          %d   / # of pixels in axis2
+    EXTEND =           T   / FITS Extensions may be present
+    BZERO =           %f   / Pixel=fits*BSCALE+BZERO
+    BSCALE =          %f   / Pixel=fits*BSCALE+BZERO
+    BLANK =           %d   / Value used for NULL pixels
+    ORIGIN =          %s   / Observatory
+    TELESCOP =        %s   / Telescope name
+    INSTRUME =        %s   / Instrument used
+    OBJECT =          %s   / Target description
+    OBSERVER=         %s   / Name of observer
+    PI-COI =          %s   / Name(s) of proposer(s)
+    EXPTIME =         %.6f / [s] Exposure time
+    RA =              %.6f / [deg] %HOURANG RA (J2000.0) pointing
+    DEC =             %.5f / [deg] %DEGREE DEC (J2000.0) pointing
+    EQUINOX =         %.0f / [y] Standard FK5
+    RADECSYS =        %s   / FK5
+    DATE =            %s   / Date this file was written
+    MJD-OBS =         %.8f / [d] Observation start %DAYTIM
+    MJD-END =         %.8f / [d] Observation end %DAYTIM
+    DATE-OBS=         %s   / Observations start
+    DATE-END=         %s   / Observation end
+    TIMESYS =         %s   / Time system used
+    LST =             %.3f / [s] %TIME LST at start
+    UTC =             %.3f / [s] %TIME UTC at start
+    CTYPE1 =          %s   / Coordinate system
+    CTYPE2 =          %s   / Coordinate system
+    CRVAL1 =          %f   / Coordinate value of ref pixel
+    CRVAL2 =          %f   / Coordinate value of ref pixel
+    CRPIX1 =          %f   / Ref pixel in axis1
+    CRPIX2 =          %f   / Ref pixel in axis2
+    CD1_1 =           %f   / Transformation matrix element
+    CD1_2 =           %f   / Transformation matrix element
+    CD2_1 =           %f   / Transformation matrix element
+    CD2_2 =           %f   / Transformation matrix element
+    CUNIT1 =          %s   / Unit of coordinate
+    CUNIT2 =          %s   / Unit of coordinate
+    CHECKSUM =        %s   / HDU checksum
+    DATASUM =         %s   / Data unit checksum
+
+other
+        
+    ALT =             %.3f / [deg] Tel ALT angle at start *
+    AZ =              %.3f / [deg] Tel Azimuth at start *
+    AIRMASS =         %.3f / Airmass at start of exposure *
+    LATITUDE =        %.4f / [deg] Tel geographic lat (+=North) *
+    LONGITUD =        %.4f / [deg] Tel geographic lon (+=East) *
+    ALTITUDE =        %.0f / [m] Elevation above sea level * 
+    TELFOCUS =        %.3f / [mm] M2 setting *
+    IMAGETYP =        %10s / Image type *
+    ZDIST =           %.3f / Zenith distance
+    
+
+
+DET
+
+    ID =              %30s / Detector Control SW ID
+    NAME =            %10s / Name of detector system
+    BINX =            %d   / Binning factor along X
+    BINY =            %d   / Binning factor along Y
+    
+    DKTM =            %.3f / [s] Dark current time
+    EXP ID =          %d   / Unique exposure ID number
+    EXP TYPE =        %s   / Type of exp as known to the CCD sw
+    FRAM ID =         %d   / Image sequential number
+    NDIT =            %d   / # of subintegrations
+
+    CHIP
+        ID =          %30s / Detector chip identification
+        NAME =        %16s / Detector chip name
+        DATE =        %30s / Date of installation
+        NX =          %d   / Physical active pixels in X
+        NY =          %d   / Physical active pixels in Y
+        PSZX =        %.1f / [um] Size of pixel in X
+        PSZY =        %.1f / [um] Size of pixel in Y
+                 
+    OUT          
+        CONAD =        %.2f / [e-/adu] Conversion from ADUs to e-
+        GAIN =         %.2f / [adu/e-] Gain
+        RON =          %.2f / [e-] Readout noise
+        OVSCX =        %d   / Overscan region in X
+        OVSCY =        %d   / Overscan region in Y
+        PRSCX =        %d   / Prescan region in X
+        PRSCY =        %d   / Prescan region in Y
+
+    READ
+        CLOCK =        %10s / Readout clock pattern used
+        ID =           %d   / Readout mode id
+        MODE =         %10s / Readout mode name
+        SPEED =        %10s / Readout speed
+
+    WIN1
+        ST =           %b   / Windowing enabled
+        STRX =         %d   / Lower left pixel in X
+        STRY =         %d   / Lower left pixel in Y
+        NX =           %d   / # of pixels along X
+        NY =           %d   / # of pixels along Y
+
+DPR
+
+    CATG =            %30s / Observation type
+    TYPE =            %30s / Observation type
+    TECH =            %30s / Observation technique
+
+INS
+
+    ID =              %30s / Instrument Control SW ID
+    DATE =            %10s / ICS installation date
+    MODE =            %10s / Instrument mode used
+    TEMP =            %.1f / [C] Instrument temperature
+    PIXSCALE =        %.3f / [arcsec] Pixel scale
+
+    FILTER
+        ID =          %10s / Filter position ID
+        NAME =        %10s / Filter position name
+        ENC =         %.3f / Filter encoder position
+        POS =         %.3f / [um] Filter position
+        
+    GRAT
+        ID =          %10s / Grating unique ID
+        NAME =        %30s / Grating common name
+        POSANG =      %.3f / [deg] Grating posang (N=0 E=90)
+        DISP =        %.1f / [nm/mm] Grating dispersion
+        WLEN =        %.1f / [nm] Grating central wavelength
+        
+    SLIT
+        WID =         %.2f / [arcsec] SLIT width
+        LEN =         %.2f / [arcsec] SLIT length
+        POSANG =      %.3f / [deg] SLIT posang (N=0 E=90)
+        RA =          %.8f / [deg] RA of slit
+        DEC =         %.8f / [deg] DEC of slit
+        
+    OPTI
+        ID =          %10s / Opti position ID
+        NAME =        %10s / Opti position name
+        ENC =         %.3f / Opti encoder position
+        POS =         %.3f / [um] Opti position
+        
+    LAMP
+        NAME =        %10s / Lamp name
+        EXPTIM =      %.3f / [s] Lamp exp time
+        ID =          %10s / Lamp position ID
+        ST =          %b   / Lamp activated
+        STAT =        %10s / Lamp string value
+
+
+OBS
+
+    ID =              %d   / Observation block id
+    NAME =            %30s / Observation block name
+    GRP =             %30s / linked blocks
+    PROG ID =         %20s / ESO programme identification
+    TPLNO =           %d   / Template seq # in OB
+
+TEL
+
+    ID =              %30s / Telescope Control SW ID
+    NAME =            %30s / Telescope Control SW name
+    DATE =            %10s / TCS installation date
+    ALT =             %.3f / [deg] Tel ALT angle at start
+    AZ =              %.3f / [deg] Tel Azimuth at start
+    GEOLAT =          %.4f / [deg] Tel geographic lat (+=North)
+    GEOLON =          %.4f / [deg] Tel geographic lon (+=East)
+    GEOELEV =         %.0f / [m] Elevation above sea level
+
+    FOCU
+        LEN =         %.3f / [m] Focal length
+        SCALE =       %.3f / [arcsec/mm] Focus scale
+        VALUE =       %.3f / [mm] M2 setting
+
+    PARANG
+        START =       %.3f / [deg] Parallactic angle at start
+        END =         %.3f / [deg] Parallactic angle at end
+        
+    AIRM
+        START =       %.3f / Airmass at start of exposure
+        END =         %.3f / Airmass at end of exposure
+        
+    TRAK
+        RATEA =       %.3f / Tracking rate in RA [mas/s]
+        RATED =       %.3f / Tracking rate in DEC [mas/s]
+        STATUS =      %10s / Tracking status
+
+    ROT
+        START =       %.5f / [deg] Derotator angle at exposure start
+        END =         %.5f / [deg] Derotator angle at exposure end
+
+    GUID
+        RA =          %.5f / [deg] %HOURANG Guide star RA J2000.0
+        DEC =         %.5f / [deg] %DEGREE Guide star DEC J2000.0
+        STATUS =      %10s / Status of autoguider
+
+
+TPL
+
+    ID =              %30s / Template ID
+    NAME =            %30s / Template name
+    START =           %s   / TPL start time
+    SEQNO =           %d   / Template seq # within OBS
+    NEXP =            %d   / Number of exposures within template
+    EXPNO =           %d   / Exposure number within template
+
+
+
+
+CATG
+    science      Any scientific object
+    calib        Any calibration source
+    acquisition  Any exposure taken to verify telescope pointing
+    technical    Any exposure taken to verify instrument performance/setup (see text)
+    test         Any exposure taken to test instrument performance/setup/software/conditions (see text)
+    other        Any other exposure
+
+
+TYPE PRINCIPAL
+    object       Any observation of an unspecified object
+    std          Any observation of a standard calibration source
+    astrometry   Astrometric standard field
+    bias         Readout frame
+    dark         Dark exposure (shutter closed)
+    flat         Any flat field exposure
+
+TYPE QUALIFIERS
+    sky          Any sky background measurement
+    lamp         Any lamp exposure
+    dome         Any exposure using the dome
+    screen       Any exposure using an illuminated screen
+    flux         Flux standard (spectroscopy and photometry)
+    psf-calibrator Reference star for psf calibration
+    wave         Any (instrument-internal) wavelength calibration
+    focus        Any focus exposure
+    slit         Any non-spectroscopic exposure using a slit
+    fiber        Any exposure using fibers                            
+
+
+TECH PRINCIPAL
+    image        Any picture
+    spectrum     Sngle-order spectrum
+    echelle      Cross-dispersed spectrum
+    mos          Frame with spectra of several objects
+    mxu          Frame with spectra of several objects using a pre-manufactured mask
+    polarimetry  Polarimetric exposure
+    
+TECH QUALIFIERS
+    tel-through  Telescope through-focus sequence
+    ins-through  Instrument through-focus sequence
+    wedge        Focus wedge frame
+    driftscan    Drift scanning exposure
+    direct       Qualifier indicating direct imaging/spectroscopy
+    nodding      Exposure utilising telescope nodding
+    jitter       Exposure utilising source jittering technique

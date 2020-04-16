@@ -85,8 +85,7 @@ class observatory():
             target = self.header['OBJECT']
             skycoord = SkyCoord.from_name(target)
         else:
-            #example oarpaf: None
-            skycoord = None
+            pass
                 
         # for header
         self.ra = skycoord.ra.to_string(unit="hourangle",sep=":")
@@ -256,32 +255,24 @@ class observatory():
             h = s in self.header
         return h    
 
-
+            
     def testarray(self):
         with open('cerbero-merged-array.json') as cm:
             ccc = json.load(cm)
-
+        
         aaa = fits.PrimaryHDU()
+        #if any([var.startswith('%') for var in ccc['primary'][key]['comment'].split()]): # variable in comment
+        for item in ccc['primary']:
+            val = item['default'] if 'default' in item else None
+            sss = fits.Card(item["name"], val, item["comment"]) 
+            aaa.header.extend([sss], update=True)
+        
+        sss = [ ("OARPAF "+c["name"], c["default"], c["comment"]) for c in ccc['hierarch'] if 'default' in c ]    
+        aaa.header.extend(sss, update=True)
 
-        for item in ccc['primary'] :
-            key = item['name']
-            #if any([var.startswith('%') for var in ccc['primary'][key]['comment'].split()]): # variable in comment
-            if 'default' in item:
-                aaa.header[key] = (item['default'], item['comment'])
-            else:
-                aaa.header[key] = ('        ', item['comment'])
 
-        for item in ccc['hierarch'] :
-            key = "HIERARCH OARPAF "+item['name'].upper()
-            if 'default' in item:
-                aaa.header[key] = (item['default'], item['comment'])
-            else:
-                aaa.header[key] = ('        ', item['comment'])
 
-                
-                                  
-    
-
+        
 def main():
     '''
     Main function

@@ -241,7 +241,7 @@ def update_keyword(header, key, *tup, comment=None):
         hist += comment
         
     header[key] = tup
-    header['history'] = hist
+    header.add_history(hist)
 
     return header
 
