@@ -16,10 +16,10 @@ import json
 # Our modules
 from reduction import get_fits_header, is_number
 
-    
+
 class observatory():
 
-    def __init__(self,filename=None):
+    def __init__(self, filename=None):
         '''
         Set default parameters.
         '''
@@ -28,16 +28,22 @@ class observatory():
         self.header = None
         self.instrument = None
         self.params = None
-        
+
         with open('instruments.json') as json_file:
             self.instruments = json.load(json_file)
             # # json array
-            # [item for item in j if item.get('id')=='Mexman'            
+            # [item for item in j if item.get('id')=='Mexman'
             # # json object
             # j['Mexman']
-        
-    
+
+        if filename is not None:
+            self.filename = filename
+
+
     def config(self, filename=None):
+        '''By Anna Marini.
+        Runs all methods to have all parameters.
+        '''
         if filename is not None:
             self.filename = filename
         self.coordinates()
@@ -47,13 +53,14 @@ class observatory():
         self.meteo()
         self.altaz()
         self.wcs()
-        #self.header.extend(w.to_header(), update=True)
         
+        #self.header.extend(w.to_header(), update=True)
+
     @property
     def filename(self):
         '''Laboratory image file name'''
         return self._filename
-    
+
     @filename.setter # On new file, update data
     def filename(self, value):
         self.header = get_fits_header(value)
@@ -67,10 +74,13 @@ class observatory():
 
 
     def coordinates(self):
-        value = self.params
-        if value['ra'] and value['dec']:
-            ra  = self.header[value['ra']]
-            dec = self.header[value['dec']]
+        '''By Anna Marini.
+        Manage keywords related to radec coordinates.
+        '''
+        
+        if self.params['ra'] and self.params['dec']:
+            ra  = self.header[self.params['ra']]
+            dec = self.header[self.params['dec']]
 
             if is_number(ra):
                 #example dfosc: 14.32572
@@ -99,11 +109,14 @@ class observatory():
         self.decdeg = skycoord.dec.deg
 
         # For other methods
-        self.skycoord = skycoord 
+        self.skycoord = skycoord
         return skycoord
 
 
     def location(self):
+        '''By Anna Marini.
+        Manage keywords related to local parameters.
+        '''
         param = self.params['location']
         if all(self.in_head(['LONGITUD','LATITUDE','ALTITUDE'])):
             lon = self.header[param[0]]
@@ -114,10 +127,8 @@ class observatory():
             lat = param[1]
             alt = param[2]
 
-        earthlocation = EarthLocation(lat=lat,
-                                      lon=lon,
-                                      height=alt)
-            
+        earthlocation = EarthLocation(lat=lat, lon=lon, height=alt)
+
         #if (self.in_head('OBSERVAT'):
         #    earthlocation = EarthLocation.of_site(self.header('OBSERVAT'))
         #   earthlocation = EarthLocation.of_address("")
@@ -133,23 +144,37 @@ class observatory():
 
 
     def times(self):
+        '''By Anna Marini.
+        Manage time-related keywords.
+        '''
+
         param = self.params['obstime']
         timekey = self.header[param]
         if 'MJD' in param:
             obstime = Time(timekey, format='mjd')
         elif param == 'JD':
             obstime = Time(timekey, format='jd')
-        elif 'DATE' in param:
-            obstime = Time(timekey)
         elif isinstance(param, list):
             obstime = Time(Time(timekey[0]).unix+timekey[1])
+        elif 'DATE' in param:
+            obstime = Time(timekey)
         else:
-            pass
-            
+            obstime = Time(timekey)
+
+        if self.in_head('EQUINOX'): #check format! Must contain "J"
+            equitime = self.header['EQUINOX']
+            if str(equitime).startswith('J'):
+                equinox = Time(equitime)
+            else:
+                equinox = Time(equitime, format='jyear')
+        else:
+            equinox = obstime
+
         # For header
-        self.mjd = obstime.mjd 
+        self.mjd = obstime.mjd
         self.jd = obstime.jd
         self.dateobs = obstime.isot
+        self.equinox = equinox.jyear_str
 
         # For other methods
         self.obstime = obstime
@@ -157,6 +182,9 @@ class observatory():
 
 
     def detector(self):
+        '''
+        Manage keywords related to the detector.
+        '''
 
         if all(self.in_head(['CCDXBIN','CCDYBIN'])):
             binning = [self.header['CCDXBIN'],
@@ -177,8 +205,12 @@ class observatory():
         else:
             self.scale = 1
 
-            
+
     def meteo(self):
+        '''
+        Manage keywords related to weather conditions.
+        '''
+
         self.temperature = None  # 20*u.Celsius
         self.humidity = None # 0-1
         self.pressure = None    # 1000*u.hpa
@@ -192,6 +224,9 @@ class observatory():
 
 
     def altaz(self):
+        '''
+        Manage keywords related to local geographic position.
+        '''
 
         if not hasattr(self, 'skycoord'):
             self.coordinates()
@@ -205,11 +240,11 @@ class observatory():
         observing_time = self.obstime
 
         generic_altaz = AltAz(location=observing_location,
-                              obstime=observing_time)        
+                              obstime=observing_time)
         #add meteo stuff for altaz
-            
+
         target_altaz = target_radec.transform_to(generic_altaz)
-        
+
         if self.in_head('ZDIST'):
             zdist = self.header['ZDIST'] # example: dfosc
         else:
@@ -232,18 +267,21 @@ class observatory():
         self.zdist = zdist
         self.sunalt = sun_altaz.alt.deg
         self.sundist = sun_radec.separation(target_radec).deg
-        self.moonalt = moon_altaz.alt.deg 
+        self.moonalt = moon_altaz.alt.deg
         self.moondist = moon_radec.separation(target_radec).deg
 
         # For other methods
         self.generic_altaz = generic_altaz
         return generic_altaz
 
+
     def wcs(self):
         '''From Anna Marini.
-        Provides WCS keywords to convert pixel coordinates of the files
-        to sky coordinates. It uses the rotational matrix obtained in previous
-        function (which_instrument)'''
+        Provide WCS keywords to convert pixel coordinates of the
+        files to sky coordinates. It uses the rotational matrix
+        obtained in previous function (which_instrument)
+
+        '''
 
         if not hasattr(self, 'skycoord'):
             self.coordinates()
@@ -257,15 +295,13 @@ class observatory():
         if self.instrument == 'Mexman':
             angle = np.pi/2
             flip = -1
-            
+
         cd = np.array([[plate*np.cos(angle), plate*np.sin(angle)*flip],
                        [plate*np.sin(angle), plate*np.cos(angle)]])
 
         w = WCS()
-
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
         w.wcs.cd = cd
-
         w.wcs.crval = [self.skycoord.ra.deg,
                        self.skycoord.dec.deg]
         w.wcs.crpix = [self.header['NAXIS1']/2,
@@ -275,7 +311,8 @@ class observatory():
         self.w = w
         return w
 
-            
+
+
     def in_head(self, s):
         '''
         Check if a keyword is in the header.
@@ -284,29 +321,30 @@ class observatory():
             h = [elem in self.header for elem in s ]
         else:
             h = s in self.header
-        return h    
+        return h
 
-            
+
     def testarray(self):
+        '''
+        Just a test.
+        '''
         with open('cerbero-merged-array.json') as cm:
             ccc = json.load(cm)
-        
+
         aaa = fits.PrimaryHDU()
         #if any([var.startswith('%') for var in ccc['primary'][key]['comment'].split()]): # variable in comment
         for item in ccc['primary']:
             val = item['default'] if 'default' in item else None
-            sss = fits.Card(item["name"], val, item["comment"]) 
+            sss = fits.Card(item["name"], val, item["comment"])
             aaa.header.extend([sss], update=True)
-        
-        sss = [ ("OARPAF "+c["name"], c["default"], c["comment"]) for c in ccc['hierarch'] if 'default' in c ]    
+
+        sss = [ ("OARPAF "+c["name"], c["default"], c["comment"]) for c in ccc['hierarch'] if 'default' in c ]
         aaa.header.extend(sss, update=True)
 
 
-
-        
 def main():
     '''
-    Main function
+    Main function.
     '''
     pattern = sys.argv[1:] # "1:" stands for "From 1 on".
     for filename in pattern:
@@ -316,14 +354,12 @@ def main():
 
 if __name__ == '__main__':
     '''
-    If called as a script
+    If called as a script.
     '''
     import sys
 
     if len(sys.argv) < 2 :
-        print("Usage:  "+sys.argv[0]+" <Parameters>")
+        print("Usage:  "+sys.argv[0]+" <list of fits files>")
         sys.exit()
 
     main()
-
-
