@@ -48,7 +48,6 @@ class observatory():
         self.altaz()
         self.wcs()
         #self.header.extend(w.to_header(), update=True)
-
         
     @property
     def filename(self):
@@ -83,43 +82,53 @@ class observatory():
                                     unit=(u.hourangle, u.deg))
         elif self.in_head('OBJECT'):
             target = self.header['OBJECT']
-            skycoord = SkyCoord.from_name(target)
+            try:
+                skycoord = SkyCoord.from_name(target)
+            except:
+                print("Object not found in catalog")
+                print("Provide ra dec or check object name")
+                exit()
         else:
-            pass
-                
-        # for header
+            print("Not radec nor object found in header")
+            exit()
+
+        # For header
         self.ra = skycoord.ra.to_string(unit="hourangle",sep=":")
         self.dec = skycoord.dec.to_string(sep=":")
         self.radeg = skycoord.ra.deg
         self.decdeg = skycoord.dec.deg
 
+        # For other methods
         self.skycoord = skycoord 
         return skycoord
 
 
     def location(self):
         param = self.params['location']
-        if all(self.in_head(['LATITUDE','LONGITUD','ALTITUDE'])):
-            lat = self.header[param[0]]
-            lon = self.header[param[1]]
+        if all(self.in_head(['LONGITUD','LATITUDE','ALTITUDE'])):
+            lon = self.header[param[0]]
+            lat = self.header[param[1]]
             alt = self.header[param[2]]
         else:
-            lat = param[0]
-            lon = param[1]
+            lon = param[0]
+            lat = param[1]
             alt = param[2]
 
         earthlocation = EarthLocation(lat=lat,
                                       lon=lon,
                                       height=alt)
-
-        self.lat = earthlocation.lat.to_string(sep=":")
-        self.lon = earthlocation.lon.to_string(sep=":")
-        self.altitude = int(earthlocation.height.to_value())
             
         #if (self.in_head('OBSERVAT'):
         #    earthlocation = EarthLocation.of_site(self.header('OBSERVAT'))
         #   earthlocation = EarthLocation.of_address("")
-           
+
+        # For header
+        self.lat = earthlocation.lat.deg
+        self.lon = earthlocation.lon.deg
+        self.altitude = int(earthlocation.height.to_value())
+
+        # For other methods
+        self.earthlocation = earthlocation
         return earthlocation
 
 
@@ -137,11 +146,13 @@ class observatory():
         else:
             pass
             
-        # for header
+        # For header
         self.mjd = obstime.mjd 
         self.jd = obstime.jd
         self.dateobs = obstime.isot
-           
+
+        # For other methods
+        self.obstime = obstime
         return obstime
 
 
@@ -159,10 +170,14 @@ class observatory():
         else:
             binning = [1, 1]
 
-        # for header
+        # For header
         self.binning = binning
-        self.scale = self.params["scale"] if self.params["scale"] is not None else 1 
-        
+        if self.params["scale"] is not None:
+            self.scale = self.params["scale"]
+        else:
+            self.scale = 1
+
+            
     def meteo(self):
         self.temperature = None  # 20*u.Celsius
         self.humidity = None # 0-1
@@ -176,14 +191,23 @@ class observatory():
             self.pressure = self.header['ATMOSBAR']
 
 
-    def altaz(self):        
-        observing_location = self.location()
-        observing_time = self.times()
-        generic_altaz = AltAz(location=observing_location,
-                              obstime=observing_time)
-        #add meteo stuff for altaz
-        
+    def altaz(self):
+
+        if not hasattr(self, 'skycoord'):
+            self.coordinates()
+        if not hasattr(self, 'earthlocation'):
+            self.location()
+        if not hasattr(self, 'obstime'):
+            self.times()
+
         target_radec = self.skycoord
+        observing_location = self.earthlocation
+        observing_time = self.obstime
+
+        generic_altaz = AltAz(location=observing_location,
+                              obstime=observing_time)        
+        #add meteo stuff for altaz
+            
         target_altaz = target_radec.transform_to(generic_altaz)
         
         if self.in_head('ZDIST'):
@@ -201,7 +225,7 @@ class observatory():
         moon_radec = get_moon(observing_time)
         moon_altaz = moon_radec.transform_to(generic_altaz)
 
-        # for header
+        # For header
         self.alt = target_altaz.alt.deg
         self.az = target_altaz.az.deg
         self.airmass = airmass
@@ -210,7 +234,9 @@ class observatory():
         self.sundist = sun_radec.separation(target_radec).deg
         self.moonalt = moon_altaz.alt.deg 
         self.moondist = moon_radec.separation(target_radec).deg
-        
+
+        # For other methods
+        self.generic_altaz = generic_altaz
         return generic_altaz
 
     def wcs(self):
@@ -218,6 +244,12 @@ class observatory():
         Provides WCS keywords to convert pixel coordinates of the files
         to sky coordinates. It uses the rotational matrix obtained in previous
         function (which_instrument)'''
+
+        if not hasattr(self, 'skycoord'):
+            self.coordinates()
+
+        if not hasattr(self, 'scale'):
+            self.detector()
 
         plate = (self.scale * self.binning[0])/3600
         angle = 0
@@ -229,8 +261,7 @@ class observatory():
         cd = np.array([[plate*np.cos(angle), plate*np.sin(angle)*flip],
                        [plate*np.sin(angle), plate*np.cos(angle)]])
 
-
-        w = WCS(self.header)
+        w = WCS()
 
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
         w.wcs.cd = cd
@@ -279,9 +310,9 @@ def main():
     '''
     pattern = sys.argv[1:] # "1:" stands for "From 1 on".
     for filename in pattern:
+        print(filename)
         o=observatory()
         o.config(filename)
-        print(o.__dict__)
 
 if __name__ == '__main__':
     '''
