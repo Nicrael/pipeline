@@ -1,7 +1,7 @@
 {
     
     "Mexman" : {
-        "location": ["LONGITUD", "LATITUDE", "ALTITUDE"],
+        "location": [-115.4869, 31.0292, 2790],
         "obstime" : "JD",
         "ra"      : "RA",
         "dec"     : "DEC",
@@ -16,10 +16,11 @@
 
     "DFOSC_FASU" : {
         "location": ["-70:44:14.7926", "-29:15:27.8194", "2375"],
-        "exptime" : "EXPTIME",
         "obstime" : "MJD-OBS",
         "ra"      : "RA",
         "dec"     : "DEC",
+
+        "exptime" : "EXPTIME",
         "gain"    : null,
         "ron"     : null,
         "scale"   : 0.39,

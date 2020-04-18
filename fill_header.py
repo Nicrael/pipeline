@@ -73,18 +73,20 @@ class observatory():
         '''
 
         param = self.params['location']
-        if all(self.in_head(['LONGITUD','LATITUDE','ALTITUDE'])):
-            lon = self.header[param[0]]
-            lat = self.header[param[1]]
-            alt = self.header[param[2]]
-        else:
-            lon = param[0]
-            lat = param[1]
-            alt = param[2]
 
-        if self.header['INSTRUME'] == 'Mexman':
-            if isinstance(self.header['LONGITUD'], str):
-                lon = "-"+lon
+        # if all(self.in_head(['LONGITUD','LATITUDE','ALTITUDE'])):
+        #     lon = self.header[param[0]]
+        #     lat = self.header[param[1]]
+        #     alt = self.header[param[2]]
+        # else:
+        
+        lon = param[0]
+        lat = param[1]
+        alt = param[2]
+
+        # if self.header['INSTRUME'] == 'Mexman':
+        #     if isinstance(self.header['LONGITUD'], str):
+        #         lon = "-"+lon
                 
         location = EarthLocation(lat=lat, lon=lon, height=alt)
 
@@ -101,7 +103,6 @@ class observatory():
         self.location = location
         return location
 
-
     def time(self):
         '''By Anna Marini.
         Manage time-related keywords.
@@ -112,6 +113,7 @@ class observatory():
 
         param = self.params['obstime']
         timekey = self.header[param]
+        
         if 'MJD' in param:
             obstime = Time(timekey, format='mjd')
         elif param == 'JD':
@@ -123,15 +125,14 @@ class observatory():
         else:
             obstime = Time(timekey)
 
-        if self.in_head('EQUINOX'):
-            equitime = self.header['EQUINOX']
-            if str(equitime).startswith('J'):
-                equinox = Time(equitime)
-            else:
-                equinox = Time(equitime, format='jyear')
-        else:
-            equinox = obstime
-
+        # if self.in_head('EQUINOX'):
+        #     equitime = self.header['EQUINOX']
+        #     if str(equitime).startswith('J'):
+        #         equinox = Time(equitime)
+        #     else:
+        #         equinox = Time(equitime, format='jyear')
+        # else:
+        #     equinox = obstime
 
         # For sidereal time
         obstime.location = self.location
@@ -141,7 +142,7 @@ class observatory():
         self.sethead("jd", obstime.jd)
         self.sethead("date-obs", obstime.isot[:-4])
         self.sethead("st", obstime.sidereal_time("mean").hourangle)
-        self.sethead("equinox", equinox.jyear_str)
+        self.sethead("equinox", obstime.jyear_str)
 
         # For other methods
         self.obstime = obstime
@@ -164,8 +165,12 @@ class observatory():
             ra  = self.header[self.params['ra']]
             dec = self.header[self.params['dec']]
 
-            if is_number(ra):
-                #example dfosc: 14.32572
+            if self.header['INSTRUME'] == 'DFOSC_FASU':
+                #example dfosc: 14.32572 decimal hours
+                coord = SkyCoord(ra=ra, dec=dec,
+                                 unit=(u.hourangle, u.deg))
+                
+            elif is_number(ra):
                 coord = SkyCoord(ra=ra, dec=dec,
                                  unit=(u.deg, u.deg))
             else:
@@ -180,24 +185,24 @@ class observatory():
             except:
                 print("Object not found in catalog")
                 print("Provide ra dec or check object name")
-                exit()
+                pass
         else:
             print("Not radec nor object found in header")
-            exit()
+            pass
 
         # For alt, az
         coord.location = self.location
         coord.obstime = self.obstime
 
-        if self.in_head('ZDIST'):
-            zdist = self.header['ZDIST'] # example: dfosc
-        else:
-            zdist = coord.altaz.zen.deg
+        # if self.in_head('ZDIST'):
+        #     zdist = self.header['ZDIST'] # example: dfosc
+        # else:
+        #    zdist = coord.altaz.zen.deg
 
-        if self.in_head('AIRMASS'):
-            airmass = self.header['AIRMASS'] # example: mexman
-        else:
-            airmass = coord.altaz.secz.value
+        # if self.in_head('AIRMASS'):
+        #     airmass = self.header['AIRMASS'] # example: mexman
+        # else:
+        #     airmass = coord.altaz.secz.value
 
         sun_radec = get_sun(self.obstime)
         sun_altaz = sun_radec.transform_to(coord.altaz)
@@ -212,8 +217,8 @@ class observatory():
 
         self.sethead("alt", coord.altaz.alt.deg)
         self.sethead("az", coord.altaz.az.deg)
-        self.sethead("airmass", airmass)
-        self.sethead("zdist", zdist)
+        self.sethead("airmass", coord.altaz.secz.value)
+        self.sethead("zdist", coord.altaz.zen.deg)
 
         self.sethead("sunalt", sun_altaz.alt.deg)
         self.sethead("sundist", sun_radec.separation(coord).deg)
