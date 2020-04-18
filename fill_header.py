@@ -14,7 +14,7 @@ import numpy as np
 import json
 
 # Our modules
-from reduction import get_fits_header, is_number
+from reduction import get_fits_header, is_number, to_number
 
 
 class observatory():
@@ -29,8 +29,11 @@ class observatory():
         self.header = None
         self.params = None
 
-        with open('instruments.json') as json_file:
-            self.instruments = json.load(json_file)
+        with open('instruments.json') as jfile:
+            self.instruments = json.load(jfile)
+
+        with open('cerbero-merged-array.json') as jfile:
+            self.head_format = json.load(jfile)['primary']
 
         if filename is not None:
             self.filename = filename
@@ -82,7 +85,7 @@ class observatory():
         if self.header['INSTRUME'] == 'Mexman':
             if isinstance(self.header['LONGITUD'], str):
                 lon = "-"+lon
-
+                
         location = EarthLocation(lat=lat, lon=lon, height=alt)
 
         #if (self.in_head('OBSERVAT'):
@@ -90,9 +93,9 @@ class observatory():
         #   earthlocation = EarthLocation.of_address("")
 
         # For header
-        self.header["latitude"] = location.lat.deg
-        self.header["longitud"] = location.lon.deg
-        self.header["altitude"] = int(location.height.to_value())
+        self.sethead("latitude", location.lat.deg)
+        self.sethead("longitud", location.lon.deg)
+        self.sethead("altitude", int(location.height.to_value()) )
 
         # For other methods
         self.location = location
@@ -134,11 +137,11 @@ class observatory():
         obstime.location = self.location
 
         # For header
-        self.header["mjd-obs"] = obstime.mjd
-        self.header["jd"] = obstime.jd
-        self.header["date-obs"] = obstime.isot[:-4]
-        self.header["st"] = obstime.sidereal_time("mean").hourangle
-        self.header["equinox"] = equinox.jyear_str
+        self.sethead("mjd-obs", obstime.mjd)
+        self.sethead("jd", obstime.jd)
+        self.sethead("date-obs", obstime.isot[:-4])
+        self.sethead("st", obstime.sidereal_time("mean").hourangle)
+        self.sethead("equinox", equinox.jyear_str)
 
         # For other methods
         self.obstime = obstime
@@ -202,20 +205,20 @@ class observatory():
         moon_altaz = moon_radec.transform_to(coord.altaz)
 
         # For header
-        #self.header["ra"] = coord.ra.to_string(unit="hourangle",sep=":")
-        #self.header["dec"] = coord.dec.to_string(sep=":")
-        self.header["ra"] = coord.ra.deg
-        self.header["dec"] = coord.dec.deg
+        #self.sethead("ra", coord.ra.to_string(unit="hourangle",sep=":"))
+        #self.sethead("dec", coord.dec.to_string(sep=":"))
+        self.sethead("ra", coord.ra.deg)
+        self.sethead("dec", coord.dec.deg)
 
-        self.header["alt"] = coord.altaz.alt.deg
-        self.header["az"] = coord.altaz.az.deg
-        self.header["airmass"] = airmass
-        self.header["zdist"] = zdist
+        self.sethead("alt", coord.altaz.alt.deg)
+        self.sethead("az", coord.altaz.az.deg)
+        self.sethead("airmass", airmass)
+        self.sethead("zdist", zdist)
 
-        self.header["sunalt"] = sun_altaz.alt.deg
-        self.header["sundist"] = sun_radec.separation(coord).deg
-        self.header["moonalt"] = moon_altaz.alt.deg
-        self.header["moondist"] = moon_radec.separation(coord).deg
+        self.sethead("sunalt", sun_altaz.alt.deg)
+        self.sethead("sundist", sun_radec.separation(coord).deg)
+        self.sethead("moonalt", moon_altaz.alt.deg)
+        self.sethead("moondist", moon_radec.separation(coord).deg)
 
         # For other methods
         self.coord = coord
@@ -258,12 +261,12 @@ class observatory():
             binning = [1, 1]
 
         # For header
-        self.header["xbin"] = binning[0]
-        self.header["ybin"] = binning[1]
+        self.sethead("xbin", binning[0])
+        self.sethead("ybin", binning[1])
         if self.params["scale"] is not None:
-            self.header["scale"] = self.params["scale"]
+            self.sethead("scale", self.params["scale"])
         else:
-            self.header["scale"]  = 1
+            self.sethead("scale", 1)
 
 
     def wcs(self):
@@ -338,3 +341,40 @@ class observatory():
         else:
             h = s in self.header
         return h
+
+
+    def sethead(self, key, val):
+        ''' By Davide Ricci.
+        Add a keyword in the header with comment and format
+        taken from the json config file
+
+        In [23]: "Hello %.2f" % 123.123
+        Out[23]: 'Hello 123.12'
+
+        In [30]: 'Hello, {:.2f}'.format(123.123)
+        Out[30]: 'Hello, 123.12'
+
+        '''
+        
+        card = [c for c in self.head_format if c["name"] == key]
+            
+        if not card:
+            comm = None
+            form = '{}'
+        else:
+            form = '{'+card[0]["format"]+'}'
+            comm = card[0]["comment"]
+        
+        if is_number(val):
+            value = form.format(val)
+            value = to_number(value)
+        else:
+            value = val
+  
+        print(key, val, "→", form, "→", value)
+          
+        if not card:
+            self.header[key] = value
+        else:
+            self.header[key] = (value, card[0]["comment"])
+            

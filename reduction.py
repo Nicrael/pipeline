@@ -164,7 +164,15 @@ def is_number(s):
     except ValueError:
         return False
 
-    
+
+def to_number(s):
+    try:
+        return int(s)
+    except ValueError:
+        return float(s)
+
+                    
+                
 
 # def ccdproc_mbias(pattern, output_file=None, method='median'):
 #     '''
