@@ -103,7 +103,7 @@
         
         { "name" :  "ins opti id",                      "format" : "%10s",   "comment" : "Opti position ID" },
         { "name" :  "ins opti name",                    "format" : "%10s",   "comment" : "Opti position name" },
-        { "name" :  "ins filt enc",                     "format" : "%.3f",   "comment" : "Opti encoder position" },
+        { "name" :  "ins opti enc",                     "format" : "%.3f",   "comment" : "Opti encoder position" },
         { "name" :  "ins opti posang",                  "format" : "%.3f",   "comment" : "[deg] Position angle (N=0 E=90)" },
         { "name" :  "ins opti type",                    "format" : "%10s",   "comment" : "Opti element" },
                                               

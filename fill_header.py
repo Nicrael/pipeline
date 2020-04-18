@@ -25,6 +25,7 @@ class observatory():
         '''
         # No default filename, header or instrument
         self._filename = None
+        self.original = None # original header
         self.header = None
         self.instrument = None
         self.params = None
@@ -39,19 +40,18 @@ class observatory():
         if filename is not None:
             self.filename = filename
 
-
     def config(self, filename=None):
         '''By Anna Marini.
         Runs all methods to have all parameters.
         '''
         if filename is not None:
             self.filename = filename
-        self.coordinates()
         self.location()
         self.times()
+        self.coordinates()
+        self.altaz()
         self.detector()
         self.meteo()
-        self.altaz()
         self.wcs()
         
         #self.header.extend(w.to_header(), update=True)
@@ -63,7 +63,8 @@ class observatory():
 
     @filename.setter # On new file, update data
     def filename(self, value):
-        self.header = get_fits_header(value)
+        self.original =  get_fits_header(value)
+        self.header = self.original.copy()
         self._filename = value
         if self.in_head('INSTRUME'):
             self.instrument = self.header['INSTRUME']
@@ -103,10 +104,10 @@ class observatory():
             exit()
 
         # For header
-        self.ra = skycoord.ra.to_string(unit="hourangle",sep=":")
-        self.dec = skycoord.dec.to_string(sep=":")
-        self.radeg = skycoord.ra.deg
-        self.decdeg = skycoord.dec.deg
+        #self.header["ra"] = skycoord.ra.to_string(unit="hourangle",sep=":")
+        #self.header["dec"] = skycoord.dec.to_string(sep=":")
+        self.header["ra"] = skycoord.ra.deg
+        self.header["dec"] = skycoord.dec.deg
 
         # For other methods
         self.skycoord = skycoord
@@ -114,7 +115,7 @@ class observatory():
 
 
     def location(self):
-        '''By Anna Marini.
+        '''By Davide Ricci.
         Manage keywords related to local parameters.
         '''
         param = self.params['location']
@@ -126,7 +127,11 @@ class observatory():
             lon = param[0]
             lat = param[1]
             alt = param[2]
-
+            
+        if self.instrument == 'Mexman':
+            if isinstance(self.header['LONGITUD'], str):
+                lon = "-"+lon
+            
         earthlocation = EarthLocation(lat=lat, lon=lon, height=alt)
 
         #if (self.in_head('OBSERVAT'):
@@ -134,9 +139,9 @@ class observatory():
         #   earthlocation = EarthLocation.of_address("")
 
         # For header
-        self.lat = earthlocation.lat.deg
-        self.lon = earthlocation.lon.deg
-        self.altitude = int(earthlocation.height.to_value())
+        self.header["latitude"] = earthlocation.lat.deg
+        self.header["longitud"] = earthlocation.lon.deg
+        self.header["altitude"] = int(earthlocation.height.to_value())
 
         # For other methods
         self.earthlocation = earthlocation
@@ -171,10 +176,10 @@ class observatory():
             equinox = obstime
 
         # For header
-        self.mjd = obstime.mjd
-        self.jd = obstime.jd
-        self.dateobs = obstime.isot
-        self.equinox = equinox.jyear_str
+        self.header["mjd-obs"] = obstime.mjd
+        self.header["jd"] = obstime.jd
+        self.header["date-obs"] = obstime.isot[:-4]
+        self.header["equinox"] = equinox.jyear_str
 
         # For other methods
         self.obstime = obstime
@@ -199,11 +204,12 @@ class observatory():
             binning = [1, 1]
 
         # For header
-        self.binning = binning
+        self.header["xbin"] = binning[0]
+        self.header["ybin"] = binning[1]
         if self.params["scale"] is not None:
-            self.scale = self.params["scale"]
+            self.header["scale"] = self.params["scale"]
         else:
-            self.scale = 1
+            self.header["scale"]  = 1
 
 
     def meteo(self):
@@ -261,14 +267,14 @@ class observatory():
         moon_altaz = moon_radec.transform_to(generic_altaz)
 
         # For header
-        self.alt = target_altaz.alt.deg
-        self.az = target_altaz.az.deg
-        self.airmass = airmass
-        self.zdist = zdist
-        self.sunalt = sun_altaz.alt.deg
-        self.sundist = sun_radec.separation(target_radec).deg
-        self.moonalt = moon_altaz.alt.deg
-        self.moondist = moon_radec.separation(target_radec).deg
+        self.header["alt"] = target_altaz.alt.deg
+        self.header["az"] = target_altaz.az.deg
+        self.header["airmass"] = airmass
+        self.header["zdist"] = zdist
+        self.header["sunalt"] = sun_altaz.alt.deg
+        self.header["sundist"] = sun_radec.separation(target_radec).deg
+        self.header["moonalt"] = moon_altaz.alt.deg
+        self.header["moondist"] = moon_radec.separation(target_radec).deg
 
         # For other methods
         self.generic_altaz = generic_altaz
@@ -289,7 +295,7 @@ class observatory():
         if not hasattr(self, 'scale'):
             self.detector()
 
-        plate = (self.scale * self.binning[0])/3600
+        plate = (self.header["scale"] * self.header["xbin"])/3600
         angle = 0
         flip = 1
         if self.instrument == 'Mexman':
@@ -308,9 +314,16 @@ class observatory():
                        self.header['NAXIS2']/2]
         #o, in alternativa, x_target e y_target date in input
 
+        # For header
+        self.header.extend(w.to_header(), update=True)        
+        # self.header.rename_keyword("PC1_1", "CD1_1", force=True)
+        # self.header.rename_keyword("PC1_2", "CD1_2", force=True)
+        # self.header.rename_keyword("PC2_1", "CD2_1", force=True)
+        # self.header.rename_keyword("PC2_2", "CD2_2", force=True)
+        
+        # For other methods
         self.w = w
         return w
-
 
 
     def in_head(self, s):
