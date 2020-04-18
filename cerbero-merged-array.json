@@ -50,8 +50,8 @@
         { "name" :  "sunalt",                             "format" : ":.3f",  "comment" : "Sun alt angle at start" },
         { "name" :  "sundist",                            "format" : ":.3f",  "comment" : "Sun distance from the target" },
         { "name" :  "moonalt",                            "format" : ":.3f",  "comment" : "Moon alt angle at start" },
-        { "name" :  "moondist",                           "format" : ":.3f",  "comment" : "Moon distance from the target" }
-
+        { "name" :  "moondist",                           "format" : ":.3f",  "comment" : "Moon distance from the target" },
+        { "name" :  "plate",                              "format" : ":.2f",  "comment" : "[arcsec/px] Plate scale of the detector" }
         
     ],
 
@@ -96,7 +96,7 @@
         { "name" :  "ins id",                           "format" : ":30s",   "comment" : "Instrument Control SW ID" },
         { "name" :  "ins date",                         "format" : ":10s",   "comment" : "ICS installation date" },
         { "name" :  "ins mode",                         "format" : ":10s",   "comment" : "Instrument mode used" },
-        { "name" :  "ins pixscale",                     "format" : ":.3f",   "comment" : "[arcsec] Pixel scale" },
+        { "name" :  "ins pixscale",                     "format" : ":.2f",   "comment" : "[arcsec] Pixel scale" },
                                                         
         { "name" :  "ins filt id",                      "format" : ":10s",   "comment" : "Filter position id" },
         { "name" :  "ins filt name",                    "format" : ":10s",   "comment" : "Filter position name" },

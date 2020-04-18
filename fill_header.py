@@ -53,7 +53,7 @@ class observatory():
         self.detector()
         self.meteo()
         self.wcs()
-
+        self.newhead()
 
     @property
     def filename(self):
@@ -73,31 +73,10 @@ class observatory():
         '''
 
         param = self.params['location']
-
-        # if all(self.in_head(['LONGITUD','LATITUDE','ALTITUDE'])):
-        #     lon = self.header[param[0]]
-        #     lat = self.header[param[1]]
-        #     alt = self.header[param[2]]
-        # else:
-        
-        lon = param[0]
-        lat = param[1]
-        alt = param[2]
-
-        # if self.header['INSTRUME'] == 'Mexman':
-        #     if isinstance(self.header['LONGITUD'], str):
-        #         lon = "-"+lon
                 
-        location = EarthLocation(lat=lat, lon=lon, height=alt)
-
-        #if (self.in_head('OBSERVAT'):
-        #    earthlocation = EarthLocation.of_site(self.header('OBSERVAT'))
-        #   earthlocation = EarthLocation.of_address("")
-
-        # For header
-        self.sethead("latitude", location.lat.deg)
-        self.sethead("longitud", location.lon.deg)
-        self.sethead("altitude", int(location.height.to_value()) )
+        location = EarthLocation(lon=param[0],
+                                 lat=param[1],
+                                 height=int(param[2]))
 
         # For other methods
         self.location = location
@@ -125,24 +104,8 @@ class observatory():
         else:
             obstime = Time(timekey)
 
-        # if self.in_head('EQUINOX'):
-        #     equitime = self.header['EQUINOX']
-        #     if str(equitime).startswith('J'):
-        #         equinox = Time(equitime)
-        #     else:
-        #         equinox = Time(equitime, format='jyear')
-        # else:
-        #     equinox = obstime
-
         # For sidereal time
         obstime.location = self.location
-
-        # For header
-        self.sethead("mjd-obs", obstime.mjd)
-        self.sethead("jd", obstime.jd)
-        self.sethead("date-obs", obstime.isot[:-4])
-        self.sethead("st", obstime.sidereal_time("mean").hourangle)
-        self.sethead("equinox", obstime.jyear_str)
 
         # For other methods
         self.obstime = obstime
@@ -160,23 +123,13 @@ class observatory():
         if not hasattr(self, 'obstime'):
             self.time()
 
+        unit = (u.hourangle, u.deg)
 
         if self.params['ra'] and self.params['dec']:
             ra  = self.header[self.params['ra']]
             dec = self.header[self.params['dec']]
-
-            if self.header['INSTRUME'] == 'DFOSC_FASU':
-                #example dfosc: 14.32572 decimal hours
-                coord = SkyCoord(ra=ra, dec=dec,
-                                 unit=(u.hourangle, u.deg))
-                
-            elif is_number(ra):
-                coord = SkyCoord(ra=ra, dec=dec,
-                                 unit=(u.deg, u.deg))
-            else:
-                #example mexman: 18:56:10.8
-                coord = SkyCoord(ra=ra, dec=dec,
-                                 unit=(u.hourangle, u.deg))
+            
+            coord = SkyCoord(ra=ra, dec=dec, unit=unit)
 
         elif self.in_head('OBJECT'):
             obj = self.header['OBJECT']
@@ -193,37 +146,6 @@ class observatory():
         # For alt, az
         coord.location = self.location
         coord.obstime = self.obstime
-
-        # if self.in_head('ZDIST'):
-        #     zdist = self.header['ZDIST'] # example: dfosc
-        # else:
-        #    zdist = coord.altaz.zen.deg
-
-        # if self.in_head('AIRMASS'):
-        #     airmass = self.header['AIRMASS'] # example: mexman
-        # else:
-        #     airmass = coord.altaz.secz.value
-
-        sun_radec = get_sun(self.obstime)
-        sun_altaz = sun_radec.transform_to(coord.altaz)
-        moon_radec = get_moon(self.obstime)
-        moon_altaz = moon_radec.transform_to(coord.altaz)
-
-        # For header
-        #self.sethead("ra", coord.ra.to_string(unit="hourangle",sep=":"))
-        #self.sethead("dec", coord.dec.to_string(sep=":"))
-        self.sethead("ra", coord.ra.deg)
-        self.sethead("dec", coord.dec.deg)
-
-        self.sethead("alt", coord.altaz.alt.deg)
-        self.sethead("az", coord.altaz.az.deg)
-        self.sethead("airmass", coord.altaz.secz.value)
-        self.sethead("zdist", coord.altaz.zen.deg)
-
-        self.sethead("sunalt", sun_altaz.alt.deg)
-        self.sethead("sundist", sun_radec.separation(coord).deg)
-        self.sethead("moonalt", moon_altaz.alt.deg)
-        self.sethead("moondist", moon_radec.separation(coord).deg)
 
         # For other methods
         self.coord = coord
@@ -252,28 +174,25 @@ class observatory():
         '''
         Manage keywords related to the detector.
         '''
+                    
+        # elif self.in_head('CCDSUM'):
+        #     binning = list(map(int, self.header['CCDSUM'].split(' ')))
 
-        if all(self.in_head(['CCDXBIN','CCDYBIN'])):
-            binning = [self.header['CCDXBIN'],
-                       self.header['CCDXBIN']]
-        elif self.in_head('CCDSUM'):
-            binning = list(map(int, self.header['CCDSUM'].split(' ')))
-
-        elif all(self.in_head(['XBINNING','YBINNING'])):
-            binning = [self.header['XBINNING'],
-                       self.header['YBINNING']]
+        if self.params["binning"]:
+            binning = [self.header[self.params["binning"][0]],
+                       self.header[self.params["binning"][1]]]
         else:
             binning = [1, 1]
 
-        # For header
-        self.sethead("xbin", binning[0])
-        self.sethead("ybin", binning[1])
-        if self.params["scale"] is not None:
-            self.sethead("scale", self.params["scale"])
+        if self.params["scale"]:
+            scale = self.params["scale"]
         else:
-            self.sethead("scale", 1)
+            scale = 1
 
-
+        plate = scale * binning[0]
+        self.plate = plate
+        return plate
+        
     def wcs(self):
         '''From Anna Marini.
         Provide WCS keywords to convert pixel coordinates of the
@@ -285,18 +204,17 @@ class observatory():
         if not hasattr(self, 'coord'):
             self.skycoord()
 
-        if not hasattr(self, 'scale'):
+        if not hasattr(self, 'plate'):
             self.detector()
 
-        plate = (self.header["scale"] * self.header["xbin"])/3600
         angle = 0
         flip = 1
         if self.header['INSTRUME'] == 'Mexman':
             angle = np.pi/2
             flip = -1
 
-        cd = np.array([[plate*np.cos(angle), plate*np.sin(angle)*flip],
-                       [plate*np.sin(angle), plate*np.cos(angle)]])
+        cd = np.array([[self.plate*np.cos(angle), self.plate*np.sin(angle)*flip],
+                       [self.plate*np.sin(angle), self.plate*np.cos(angle)]])
 
         w = WCS()
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
@@ -306,13 +224,6 @@ class observatory():
         w.wcs.crpix = [self.header['NAXIS1']/2,
                        self.header['NAXIS2']/2]
         #o, in alternativa, x_target e y_target date in input
-
-        # For header
-        self.header.extend(w.to_header(), update=True)
-        # self.header.rename_keyword("PC1_1", "CD1_1", force=True)
-        # self.header.rename_keyword("PC1_2", "CD1_2", force=True)
-        # self.header.rename_keyword("PC2_1", "CD2_1", force=True)
-        # self.header.rename_keyword("PC2_2", "CD2_2", force=True)
 
         # For other methods
         self.w = w
@@ -382,4 +293,62 @@ class observatory():
             self.header[key] = value
         else:
             self.header[key] = (value, card[0]["comment"])
-            
+
+
+    def newhead(self):
+
+        if not hasattr(self, 'location'):
+            self.earthlocation()
+
+        if not hasattr(self, 'obstime'):
+            self.time()
+
+        if not hasattr(self, 'plate'):
+            self.detector()
+
+        if not hasattr(self, 'coor'):
+            self.skycoord()
+
+        if not hasattr(self, 'w'):
+            self.wcs()
+
+        # location
+        self.sethead("latitude", self.location.lat.deg)
+        self.sethead("longitud", self.location.lon.deg)
+        self.sethead("altitude", int(self.location.height.to_value()) )
+
+        # obstime
+        self.sethead("mjd-obs", self.obstime.mjd)
+        self.sethead("jd", self.obstime.jd)
+        self.sethead("date-obs", self.obstime.isot[:-4])
+        self.sethead("st", self.obstime.sidereal_time("mean").hourangle)
+        self.sethead("equinox", self.obstime.jyear_str)
+        
+        # detector
+        self.sethead("plate", self.plate)
+
+        # coor
+        #self.sethead("ra", self.coord.ra.to_string(unit="hourangle",sep=":"))
+        #self.sethead("dec", self.coord.dec.to_string(sep=":"))
+        self.sethead("ra", self.coord.ra.deg)
+        self.sethead("dec", self.coord.dec.deg)
+
+        self.sethead("alt", self.coord.altaz.alt.deg)
+        self.sethead("az", self.coord.altaz.az.deg)
+        self.sethead("airmass", self.coord.altaz.secz.value)
+        self.sethead("zdist", self.coord.altaz.zen.deg)
+        
+        sun_radec = get_sun(self.obstime)
+        sun_altaz = sun_radec.transform_to(self.coord.altaz)
+        moon_radec = get_moon(self.obstime)
+        moon_altaz = moon_radec.transform_to(self.coord.altaz)
+
+        self.sethead("sunalt", sun_altaz.alt.deg)
+        self.sethead("sundist", sun_radec.separation(self.coord).deg)
+        self.sethead("moonalt", moon_altaz.alt.deg)
+        self.sethead("moondist", moon_radec.separation(self.coord).deg)
+
+        # wcs
+        self.header.extend(self.w.to_header(), update=True)
+        #self.header.extend(w.to_header(), update=True)
+        # self.header.rename_keyword("PC1_1", "CD1_1", force=True)
