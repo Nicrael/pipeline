@@ -2,10 +2,11 @@
     
     "Mexman" : {
         "location": ["LONGITUD", "LATITUDE", "ALTITUDE"],
-        "exptime" : "EXPTIME",
         "obstime" : "JD",
         "ra"      : "RA",
         "dec"     : "DEC",
+        
+        "exptime" : "EXPTIME",
         "binning" : ["CCDXBIN", "CCDYBIN"],
         "gain"    : 3.82,
         "ron"     : 1.8,
