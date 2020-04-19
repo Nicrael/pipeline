@@ -40,6 +40,7 @@
         "binning" : ["XBINNING", "YBINNING"],
         "comment" : ""
     },
+
+    "default": null
     
-    "default" : null
 }

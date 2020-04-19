@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.6
 # -*- coding: utf-8 -*-
 
 # %load_ext autoreload
@@ -40,7 +40,7 @@ class observatory():
 
 
     def config(self, filename=None):
-        '''By Davide Ricci.
+        '''
         Runs all methods to have all parameters.
         Mainly for test purposes
         '''
@@ -198,7 +198,6 @@ class observatory():
         Provide WCS keywords to convert pixel coordinates of the
         files to sky coordinates. It uses the rotational matrix
         obtained in previous function (which_instrument)
-
         '''
 
         if not hasattr(self, 'coord'):
@@ -213,8 +212,8 @@ class observatory():
             angle = np.pi/2
             flip = -1
 
-        cd = np.array([[self.plate*np.cos(angle), self.plate*np.sin(angle)*flip],
-                       [self.plate*np.sin(angle), self.plate*np.cos(angle)]])
+        cd = self.plate*np.array([[np.cos(angle), np.sin(angle)*flip],
+                                  [np.sin(angle), np.cos(angle)]])
 
         w = WCS()
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
@@ -223,29 +222,10 @@ class observatory():
                        self.coord.dec.deg]
         w.wcs.crpix = [self.header['NAXIS1']/2,
                        self.header['NAXIS2']/2]
-        #o, in alternativa, x_target e y_target date in input
 
         # For other methods
         self.w = w
         return w
-
-
-    def testarray(self):
-        '''
-        Just a test.
-        '''
-        with open('cerbero-merged-array.json') as cm:
-            ccc = json.load(cm)
-
-        aaa = fits.PrimaryHDU()
-        #if any([var.startswith('%') for var in ccc['primary'][key]['comment'].split()]): # variable in comment
-        for item in ccc['primary']:
-            val = item['default'] if 'default' in item else None
-            sss = fits.Card(item["name"], val, item["comment"])
-            aaa.header.extend([sss], update=True)
-
-        sss = [ ("OARPAF "+c["name"], c["default"], c["comment"]) for c in ccc['hierarch'] if 'default' in c ]
-        aaa.header.extend(sss, update=True)
 
 
     def in_head(self, s):
@@ -350,5 +330,6 @@ class observatory():
 
         # wcs
         self.header.extend(self.w.to_header(), update=True)
+        
         #self.header.extend(w.to_header(), update=True)
         # self.header.rename_keyword("PC1_1", "CD1_1", force=True)
