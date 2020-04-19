@@ -42,21 +42,22 @@
         { "name" :  "latitude",                           "format" : ":.4f",  "comment" : "[deg] Tel geographic lat (+=North)" },
         { "name" :  "altitude",                           "format" : ":.0f",  "comment" : "[m] Elevation above sea level"},
         { "name" :  "alt",                                "format" : ":.3f",  "comment" : "[deg] Tel ALT angle at start" },
-        { "name" :  "az",                                 "format" : ":.3f",  "comment" : "[deg] Tel Azimuth at start" },        
-        { "name" :  "st",                                 "format" : ":.3f",  "comment" : "Sideral time at start" },        
-        { "name" :  "ha",                                 "format" : ":.3f",  "comment" : "Hour angle at start" },        
+        { "name" :  "az",                                 "format" : ":.3f",  "comment" : "[deg] Tel Azimuth at start" },
+        { "name" :  "st",                                 "format" : ":.3f",  "comment" : "Sideral time at start" },
+        { "name" :  "ha",                                 "format" : ":.3f",  "comment" : "Hour angle at start" },
         { "name" :  "airmass",                            "format" : ":.3f",  "comment" : "Airmass at start of exposure" },
         { "name" :  "zdist",                              "format" : ":.3f",  "comment" : "Zenit distance at start of exposure" },
         { "name" :  "sunalt",                             "format" : ":.3f",  "comment" : "Sun alt angle at start" },
         { "name" :  "sundist",                            "format" : ":.3f",  "comment" : "Sun distance from the target" },
         { "name" :  "moonalt",                            "format" : ":.3f",  "comment" : "Moon alt angle at start" },
         { "name" :  "moondist",                           "format" : ":.3f",  "comment" : "Moon distance from the target" },
-        { "name" :  "plate",                              "format" : ":.2f",  "comment" : "[arcsec/px] Plate scale of the detector" }
-        
+        { "name" :  "plate",                              "format" : ":.2f",  "comment" : "[arcsec/px] Plate scale of the detector" },
+        { "name" :  "filename",                           "format" : ":30s",  "comment" : "Original filename" }
+
     ],
 
-    "hierarch": [                                                                                            
-        
+    "hierarch": [
+
         { "name" :  "det id",                           "format" : ":30s",   "comment" : "Detector Control SW ID" },
         { "name" :  "det name",                         "format" : ":10s",   "comment" : "Name of detector system" },
         { "name" :  "det binx",                         "format" : ":d",    "comment" : "Binning factor in X" },
@@ -66,14 +67,14 @@
         { "name" :  "det exp type",                     "format" : ":s  ",  "comment" : "Type of exp as known to the CCD sw" },
         { "name" :  "det fram id",                      "format" : ":d",    "comment" : "Image sequential number" },
         { "name" :  "det ndit",                         "format" : ":d",    "comment" : "# of subintegrations" },
-        
+
         { "name" :  "det chip id",                      "format" : ":30s",  "comment" : "Detector chip identification" },
         { "name" :  "det chip name",                    "format" : ":16s",  "comment" : "Detector chip name" },
         { "name" :  "det chip nx",                      "format" : ":d",    "comment" : "# of pixels along X" },
         { "name" :  "det chip ny",                      "format" : ":d",    "comment" : "# of pixels along Y" },
         { "name" :  "det chip pszx",                    "format" : ":.1f",  "comment" : "[mu] Size of pixel in X" },
         { "name" :  "det chip pszy",                    "format" : ":.1f",  "comment" : "[mu] Size of pixel in Y" },
-                                                        
+
         { "name" :  "det out conad",                    "format" : ":.2f",   "comment" : "[e-/adu] Conversion from ADUs to e-" },
         { "name" :  "det out gain",                     "format" : ":.2f",   "comment" : "[adu/e-] Gain" },
         { "name" :  "det out ron",                      "format" : ":.2f",  "comment" : "Readout noise" },
@@ -91,18 +92,18 @@
         { "name" :  "det win stry",                     "format" : ":d",    "comment" : "Lower left pixel in Y" },
         { "name" :  "det win nx",                       "format" : ":d",    "comment" : "# of pixels along X" },
         { "name" :  "det win ny",                       "format" : ":d",    "comment" : "# of pixels along Y" },
-                                                        
-                                                        
+
+
         { "name" :  "ins id",                           "format" : ":30s",   "comment" : "Instrument Control SW ID" },
         { "name" :  "ins date",                         "format" : ":10s",   "comment" : "ICS installation date" },
         { "name" :  "ins mode",                         "format" : ":10s",   "comment" : "Instrument mode used" },
         { "name" :  "ins pixscale",                     "format" : ":.2f",   "comment" : "[arcsec] Pixel scale" },
-                                                        
+
         { "name" :  "ins filt id",                      "format" : ":10s",   "comment" : "Filter position id" },
         { "name" :  "ins filt name",                    "format" : ":10s",   "comment" : "Filter position name" },
         { "name" :  "ins filt enc",                     "format" : ":.3f",   "comment" : "Filter encoder position" },
         { "name" :  "ins filt pos",                     "format" : ":.3f",   "comment" : "[deg] Filter posang (N=0 E=90)" },
-                                                        
+
         { "name" :  "ins grat id",                      "format" : ":10s",   "comment" : "Grating unique ID" },
         { "name" :  "ins grat name",                    "format" : ":30s",   "comment" : "Grating common name" },
         { "name" :  "ins grat posang",                  "format" : ":.3f",   "comment" : "[deg] Grating posang (N=0 E=90)" },
@@ -116,13 +117,13 @@
         { "name" :  "ins slit dec",                     "format" : ":.8f",   "comment" : "[deg] DEC of slit" },
         { "name" :  "ins slit len",                     "format" : ":.2f",   "comment" : "[arcsec] Slit length" },
         { "name" :  "ins slit wid",                     "format" : ":.2f",   "comment" : "[arcsec] Slit width" },
-        
+
         { "name" :  "ins opti id",                      "format" : ":10s",   "comment" : "Opti position ID" },
         { "name" :  "ins opti name",                    "format" : ":10s",   "comment" : "Opti position name" },
         { "name" :  "ins opti enc",                     "format" : ":.3f",   "comment" : "Opti encoder position" },
         { "name" :  "ins opti posang",                  "format" : ":.3f",   "comment" : "[deg] Position angle (N=0 E=90)" },
         { "name" :  "ins opti type",                    "format" : ":10s",   "comment" : "Opti element" },
-                                              
+
         { "name" :  "ins lamp name",                    "format" : ":10s",   "comment" : "Lamp name" },
         { "name" :  "ins lamp exptim",                  "format" : ":.3f",   "comment" : "[s] Lamp exp time" },
         { "name" :  "ins lamp st",                      "format" : ":b",     "comment" : "Lamp activated" },
@@ -140,7 +141,7 @@
         { "name" :  "tel geolat",  "default" : 44.5911, "format" : ":.4f",  "comment" : "[deg] Tel geographic lat (+=North)" },
         { "name" :  "tel geoelev", "default" : 1480,    "format" : ":.0f",  "comment" : "[m] Elevation above sea level"},
         { "name" :  "tel alt",                          "format" : ":.3f",  "comment" : "[deg] Tel ALT angle at start" },
-        { "name" :  "tel az",                           "format" : ":.3f",  "comment" : "[deg] Tel Azimuth at start" },        
+        { "name" :  "tel az",                           "format" : ":.3f",  "comment" : "[deg] Tel Azimuth at start" },
         { "name" :  "tel airm start",                   "format" : ":.3f",   "comment" : "Airmass at start of exposure" },
         { "name" :  "tel airm end",                     "format" : ":.3f",   "comment" : "Airmass at end of exposure" },
         { "name" :  "tel rot end",                      "format" : ":.5f",  "comment" : "[deg] Abs rot angle at exposure end" },
@@ -153,7 +154,7 @@
         { "name" :  "tel trak status",                  "format" : ":10s",   "comment" : "Tracking status" },
         { "name" :  "tel focu len",                     "format" : ":.3f",   "comment" : "[m] Focal length" },
         { "name" :  "tel focu scale",                   "format" : ":.3f",   "comment" : "[arcsec/mm] Focus scale" },
-        { "name" :  "tel focu value",                   "format" : ":.3f",   "comment" : "[mm] M2 setting" },        
+        { "name" :  "tel focu value",                   "format" : ":.3f",   "comment" : "[mm] M2 setting" },
         { "name" :  "tel parang end",                   "format" : ":.3f",   "comment" : "[deg] Parallactic angle at end" },
         { "name" :  "tel parang start",                 "format" : ":.3f",   "comment" : "[deg] Parallactic angle at start" },
         { "name" :  "tpl did",                          "format" : ":30s",  "comment" : "Data dictionary for TPL" },
@@ -163,7 +164,7 @@
         { "name" :  "tpl nexp",                         "format" : ":d",    "comment" : "Number of exposures within template" },
         { "name" :  "tpl seqno",                        "format" : ":d",    "comment" : "Template seq # within OBS" },
         { "name" :  "tpl start",                        "format" : ":s",    "comment" : "TPL start time" },
-        
+
         { "name" :  "dpr catg",      "range" : ["science", "calib", "acquisition", "technical", "test"],
                                      "format" : ":30s", "comment" : "Observation category" },
         { "name" :  "dpr type prin", "range" : ["object", "bias", "dark", "flat", "std", "astrometry"],
@@ -174,6 +175,6 @@
                                      "format" : ":30s", "comment" : "Observation type" },
         { "name" :  "dpr tech qual", "range" : ["tel-through", "ins-through", "direct", "nodding", "jitter"],
                                      "format" : ":30s", "comment" : "Observation type" }
-        
+
     ]
 }

@@ -13,11 +13,9 @@ import astropy.units as u
 import numpy as np
 import json
 
-# from astropy.io import fits
-
 # Our modules
 from reduction import get_fits_header, is_number, to_number, new_header
-
+from sethead import sethead
 
 class observatory():
 
@@ -42,9 +40,6 @@ class observatory():
         self.alt =  kwargs.get('alt', 0)
         self.unit =  kwargs.get('unit', (u.hour, u.deg))
         self.scale =  kwargs.get('scale')
-
-        with open('cerbero-merged-array.json') as jfile:
-            self.head_format = json.load(jfile)['primary']
 
     def test(self, filename):
         '''
@@ -171,42 +166,7 @@ class observatory():
         # For other methods
         self.w = w
         return w
-
-
-
-    def sethead(self, h, key, val):
-        ''' By Davide Ricci.
-        Add a keyword in the header with comment and format
-        taken from the json config file
-
-        In [23]: "Hello %.2f" % 123.123
-        Out[23]: 'Hello 123.12'
-
-        In [30]: 'Hello, {:.2f}'.format(123.123)
-        Out[30]: 'Hello, 123.12'
-        '''
-        
-        card = [c for c in self.head_format if c["name"] == key]
-            
-        if not card:
-            form = '{}'
-            comm = None
-        else:
-            form = '{'+card[0]["format"]+'}'
-            comm = card[0]["comment"]
-        
-        if is_number(val):
-            value = form.format(val)
-            value = float(value)
-        else:
-            value = val
-  
-        #print(key, val, "→", form, "→", value)
-          
-        if not card:
-            h[key] = value
-        else:
-            h[key] = (value, card[0]["comment"])
+    
 
 
     def newhead(self):
@@ -223,42 +183,42 @@ class observatory():
             self.wcs()
 
         # location
-        self.sethead(nh, "latitude", self.coord.location.lat.deg)
-        self.sethead(nh, "longitud", self.coord.location.lon.deg)
-        self.sethead(nh, "altitude", int(self.coord.location.height.to_value()) )
+        sethead(nh, "latitude", self.coord.location.lat.deg)
+        sethead(nh, "longitud", self.coord.location.lon.deg)
+        sethead(nh, "altitude", int(self.coord.location.height.to_value()) )
 
         # obstime
-        self.sethead(nh, "mjd-obs", self.coord.obstime.mjd)
-        self.sethead(nh, "jd", self.coord.obstime.jd)
-        self.sethead(nh, "date-obs", self.coord.obstime.isot[:-4])
-        self.sethead(nh, "st", self.coord.obstime.sidereal_time("mean").hour)
-        self.sethead(nh, "equinox", self.coord.obstime.jyear_str)
+        sethead(nh, "mjd-obs", self.coord.obstime.mjd)
+        sethead(nh, "jd", self.coord.obstime.jd)
+        sethead(nh, "date-obs", self.coord.obstime.isot[:-4])
+        sethead(nh, "st", self.coord.obstime.sidereal_time("mean").hour)
+        sethead(nh, "equinox", self.coord.obstime.jyear_str)
         
         # detector
-        self.sethead(nh, "plate", self.plate)
+        sethead(nh, "plate", self.plate)
 
         # coord
-        #self.sethead(nh, "ra", self.coord.ra.to_string(unit="hourangle",sep=":"))
-        #self.sethead(nh, "dec", self.coord.dec.to_string(sep=":"))
-        self.sethead(nh, "ra", self.coord.ra.deg)
-        self.sethead(nh, "dec", self.coord.dec.deg)
+        #sethead(nh, "ra", self.coord.ra.to_string(unit="hourangle",sep=":"))
+        #sethead(nh, "dec", self.coord.dec.to_string(sep=":"))
+        sethead(nh, "ra", self.coord.ra.deg)
+        sethead(nh, "dec", self.coord.dec.deg)
 
-        self.sethead(nh, "alt", self.coord.altaz.alt.deg)
-        self.sethead(nh, "az", self.coord.altaz.az.deg)
-        self.sethead(nh, "airmass", self.coord.altaz.secz.value)
-        self.sethead(nh, "zdist", self.coord.altaz.zen.deg)
+        sethead(nh, "alt", self.coord.altaz.alt.deg)
+        sethead(nh, "az", self.coord.altaz.az.deg)
+        sethead(nh, "airmass", self.coord.altaz.secz.value)
+        sethead(nh, "zdist", self.coord.altaz.zen.deg)
         
         sun_radec = get_sun(self.coord.obstime)
         sun_altaz = sun_radec.transform_to(self.coord.altaz)
         moon_radec = get_moon(self.coord.obstime)
         moon_altaz = moon_radec.transform_to(self.coord.altaz)
 
-        self.sethead(nh, "sunalt", sun_altaz.alt.deg)
-        self.sethead(nh, "sundist", sun_radec.separation(self.coord).deg)
-        self.sethead(nh, "moonalt", moon_altaz.alt.deg)
-        self.sethead(nh, "moondist", moon_radec.separation(self.coord).deg)
+        sethead(nh, "sunalt", sun_altaz.alt.deg)
+        sethead(nh, "sundist", sun_radec.separation(self.coord).deg)
+        sethead(nh, "moonalt", moon_altaz.alt.deg)
+        sethead(nh, "moondist", moon_radec.separation(self.coord).deg)
 
-        self.sethead(nh, "filename", self.filename.split("/")[-1])
+        sethead(nh, "filename", self.filename.split("/")[-1])
         
         # wcs
         #nh.extend(self.w.to_header(), update=True)
