@@ -1,7 +1,9 @@
 {
     
     "Mexman" : {
-        "location": [-115.4869, 31.0292, 2790],
+        "lon" : -115.4869,
+        "lat" : 31.0292,
+        "alt" :2790,
         "obstime" : "JD",
         "ra"      : "RA",
         "dec"     : "DEC",
@@ -15,7 +17,9 @@
     },
 
     "DFOSC_FASU" : {
-        "location": ["-70:44:14.7926", "-29:15:27.8194", "2375"],
+        "lon" : "-70:44:14.7926",
+        "lat" : "-29:15:27.8194",
+        "alt" : 2375,
         "obstime" : "MJD-OBS",
         "ra"      : "RA",
         "dec"     : "DEC",
@@ -28,8 +32,10 @@
         "comment" : ""
     },
 
-    "SBIG STL-11000 3 CCD Camera" : {
-        "location": [9.2034, 44.5911, 1480],
+    "STL-11000 3 CCD Camera" : {
+        "lon" : 9.2034,
+        "lat" : 44.5911,
+        "alt" : 1480,
         "exptime" : "EXPTIME",
         "obstime" : "JD",
         "ra"      : null,

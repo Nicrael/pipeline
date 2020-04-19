@@ -277,6 +277,9 @@ def init_wcs(header):
 
     return header
 
+
+def new_header():
+    return fits.PrimaryHDU().header
     
 def main():    
     '''
