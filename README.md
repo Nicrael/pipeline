@@ -16,8 +16,8 @@ Reload :
 
 Install specific Python version
 
-    pyenv install 3.7.7
-    pyenv global 3.7.7
+    pyenv install 3.6.8
+    pyenv global 3.6.8
 
 Check if alias is ok:
 
@@ -25,8 +25,8 @@ Check if alias is ok:
 
 Upgrade pip and ipyhton
 
-    python -m pip install --upgrade pip
-    python -m pip install --upgrade ipython
+    pip install --upgrade pip
+    pip install --upgrade ipython
     
 Install packages
     
