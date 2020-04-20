@@ -1,22 +1,35 @@
 # pipeline
 Data reduction pipeline for OARPAF data and much more 
 
-curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer | bash
-pyenv install 3.7
+    curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer | bash
+    pyenv install 3.7
 
-Add to ~/.basrc: 
+Add to `~/.basrc`: 
 
-export PATH="/home/indy/.pyenv/bin:$PATH"                                                                                                                          
-eval "$(pyenv init -)"                                                                                                                                             
-eval "$(pyenv virtualenv-init -)"                                                                                                                                  
+   export PATH="/home/indy/.pyenv/bin:$PATH"                                                                                                                          
+   eval "$(pyenv init -)"                                                                                                                                             
+   eval "$(pyenv virtualenv-init -)"
+   
+Reload :
+   
+    source ~/.basrc
 
-source ~/.basrc
+Install specific Python version
 
-pyenv install 3.7.7
-pyenv global 3.7.7
+    pyenv install 3.7.7
+    pyenv global 3.7.7
 
-python --version #check if 3.7.7
+Check if alias is ok:
 
-python -m pip install --upgrade pip
-python -m pip install --upgrade ipython
-pip install --upgrade  astropy numpy scipy matplotlib pyds9 scikit-image astroplan
+    python --version 
+
+Upgrade pip and ipyhton
+
+    python -m pip install --upgrade pip
+    python -m pip install --upgrade ipython
+    
+Install packages
+    
+    pip install --upgrade  astropy numpy scipy matplotlib pyds9 scikit-image astroplan
+    
+
