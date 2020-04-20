@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # %load_ext autoreload
@@ -14,12 +14,15 @@ def sethead(head, key, val):
     ''' By Davide Ricci.
     Add a keyword in the header with comment and format
     taken from the json config file
-    
-    In [23]: "Hello %.2f" % 123.123
-    Out[23]: 'Hello 123.12'
-    
-    In [30]: 'Hello, {:.2f}'.format(123.123)
-    Out[30]: 'Hello, 123.12'
+
+    In [23]: "Hello %.2f" % 123.129
+    Out[23]: 'Hello 123.13'
+
+    In [30]: 'Hello, {:.2f}'.format(123.129)
+    Out[30]: 'Hello, 123.13'
+
+    In [47]: f'Hello, {123.129:.2f}'                                                                                                                          
+    Out[51]: 'Hello, 123.13'
     '''
 
     with open('cerbero-merged-array.json') as jfile:
@@ -28,14 +31,14 @@ def sethead(head, key, val):
     card = [c for c in head_format if c["name"] == key]
         
     if not card:
-        form = '{}'
+        form = ''
         comm = None
     else:
-        form = '{'+card[0]["format"]+'}'
+        form = card[0]["format"]
         comm = card[0]["comment"]
-    
+
     if is_number(val):
-        value = form.format(val)
+        value = f'{val:{form}}'
         value = float(value)
     else:
         value = val

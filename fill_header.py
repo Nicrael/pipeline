@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # %load_ext autoreload
@@ -249,7 +249,7 @@ def main():
         o.filename = filename
         o.skycoord()
         o.newhead()
-        print(o.nh['mjd-obs'])
+        print(o.nh)
 
         
 if __name__ == '__main__':
