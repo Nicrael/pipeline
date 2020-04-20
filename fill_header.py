@@ -168,11 +168,9 @@ class observatory():
         return w
     
 
-
     def newhead(self):
         nh = new_header()
-        
-        
+                
         if not hasattr(self, 'plate'):
             self.detector()
 
@@ -181,47 +179,49 @@ class observatory():
 
         if not hasattr(self, 'w'):
             self.wcs()
-
+        
+        c = self.coord
+            
         # location
-        sethead(nh, "latitude", self.coord.location.lat.deg)
-        sethead(nh, "longitud", self.coord.location.lon.deg)
-        sethead(nh, "altitude", int(self.coord.location.height.to_value()) )
+        sethead(nh, "latitude", c.location.lat.deg)
+        sethead(nh, "longitud", c.location.lon.deg)
+        sethead(nh, "altitude", int(c.location.height.to_value()) )
 
         # obstime
-        sethead(nh, "mjd-obs", self.coord.obstime.mjd)
-        sethead(nh, "jd", self.coord.obstime.jd)
-        sethead(nh, "date-obs", self.coord.obstime.isot[:-4])
-        sethead(nh, "st", self.coord.obstime.sidereal_time("mean").hour)
-        sethead(nh, "equinox", self.coord.obstime.jyear_str)
+        sethead(nh, "mjd-obs", c.obstime.mjd)
+        sethead(nh, "jd", c.obstime.jd)
+        sethead(nh, "date-obs", c.obstime.isot[:-4])
+        sethead(nh, "st", c.obstime.sidereal_time("mean").hour)
+        sethead(nh, "equinox", c.obstime.jyear)
         
         # detector
         sethead(nh, "plate", self.plate)
 
         # coord
-        #sethead(nh, "ra", self.coord.ra.to_string(unit="hourangle",sep=":"))
-        #sethead(nh, "dec", self.coord.dec.to_string(sep=":"))
-        sethead(nh, "ra", self.coord.ra.deg)
-        sethead(nh, "dec", self.coord.dec.deg)
+        #sethead(nh, "ra", c.ra.to_string(unit="hourangle",sep=":"))
+        #sethead(nh, "dec", c.dec.to_string(sep=":"))
+        sethead(nh, "ra", c.ra.deg)
+        sethead(nh, "dec", c.dec.deg)
 
-        sethead(nh, "alt", self.coord.altaz.alt.deg)
-        sethead(nh, "az", self.coord.altaz.az.deg)
-        sethead(nh, "airmass", self.coord.altaz.secz.value)
-        sethead(nh, "zdist", self.coord.altaz.zen.deg)
+        sethead(nh, "alt", c.altaz.alt.deg)
+        sethead(nh, "az", c.altaz.az.deg)
+        sethead(nh, "airmass", c.altaz.secz.value)
+        sethead(nh, "zdist", c.altaz.zen.deg)
         
-        sun_radec = get_sun(self.coord.obstime)
-        sun_altaz = sun_radec.transform_to(self.coord.altaz)
-        moon_radec = get_moon(self.coord.obstime)
-        moon_altaz = moon_radec.transform_to(self.coord.altaz)
+        sun_radec = get_sun(c.obstime)
+        sun_altaz = sun_radec.transform_to(c.altaz)
+        moon_radec = get_moon(c.obstime)
+        moon_altaz = moon_radec.transform_to(c.altaz)
 
         sethead(nh, "sunalt", sun_altaz.alt.deg)
-        sethead(nh, "sundist", sun_radec.separation(self.coord).deg)
+        sethead(nh, "sundist", sun_radec.separation(c).deg)
         sethead(nh, "moonalt", moon_altaz.alt.deg)
-        sethead(nh, "moondist", moon_radec.separation(self.coord).deg)
+        sethead(nh, "moondist", moon_radec.separation(c).deg)
 
         sethead(nh, "filename", self.filename.split("/")[-1])
         
         # wcs
-        #nh.extend(self.w.to_header(), update=True)
+        nh.extend(self.w.to_header(), update=True)
         
         #self.header.extend(w.to_header(), update=True)
         # self.header.rename_keyword("PC1_1", "CD1_1", force=True)

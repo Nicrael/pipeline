@@ -12,6 +12,7 @@ from astropy.wcs import WCS
 import astropy.units as u
 import numpy as np
 
+import ccdproc as ccdp
 
 def choose_hdu(filename):
     '''
@@ -71,7 +72,7 @@ def get_fits_data(filename):
     
 def join_fits_header(pattern):
     '''
-    Join the header of a given fits file list in a tuple.
+    Join the header of list of fits files in a tuple.
     '''
     tuple_of_fits_header = ()
     for filename in pattern:
@@ -82,8 +83,8 @@ def join_fits_header(pattern):
 
 def join_fits_data(pattern):
     '''
-    Join the data of a given fits file list in a tuple.
-    It is a useful format for stacking in a data cube.
+    Join the data of a list of fits files in a tuple.
+    Tuple format is useful for stacking in a data cube.
     '''
     tuple_of_fits_data = ()
     for filename in pattern:
@@ -132,7 +133,7 @@ def write_fits(data, filename, header=None):
     return hdu
 
 
-def oarpaf_mbias(pattern, output_file=None, method='median'):
+def oarpaf_mbias(pattern, method='median', output_file=None, header=None):
     '''
     Custom master bias routine.
     Calculates the master bias of a list of of fits files.
@@ -140,16 +141,36 @@ def oarpaf_mbias(pattern, output_file=None, method='median'):
     No output file is provided by default.
     '''
     joined_fits = join_fits_data(pattern)
-    datacube=stack_fits_data(joined_fits)
+    datacube = stack_fits_data(joined_fits)
     del joined_fits # saving memory
     if method is 'average':
         combined_data = average_datacube(datacube)
     else:
         combined_data = median_datacube(datacube)
     del datacube # saving memory
-    header=get_fits_header(pattern[0])
+    
+    header = get_fits_header(pattern[0]) if header else None
     if output_file is not None:
         write_fits(combined_data, output_file, header=header)
+    return combined_data
+
+
+def ccdproc_mbias(pattern, output_file=None, method='median'):
+    ccd_data_list = [ccdp.CCDData(p, unit="adu")  for p in pattern ]
+    '''
+    CCDproc-based master bias routine.
+    Calculates the master bias of a tuple of fits data.
+    Default combining method is median.
+    No output file is provided by default.
+    '''
+    
+    combined_data = ccdp.combine(ccd_data_list, method=method, unit=u.adu,
+                                 dtype=np.uint16, mem_limit=1024e6)
+    # sigma_clip=True, sigma_clip_low_thresh=5, sigma_clip_high_thresh=5,
+    # sigma_clip_func=np.ma.median, signma_clip_dev_func=mad_std)
+    #combined_bias.meta['combined'] = True
+    if output_file is not None:
+        combined_bias.write(output_file, overwrite=True)
     return combined_data
 
 
@@ -172,25 +193,6 @@ def to_number(s):
         return float(s)
 
                     
-                
-
-# def ccdproc_mbias(pattern, output_file=None, method='median'):
-#     '''
-#     CCDproc-based master bias routine.
-#     Calculates the master bias of a list of of fits files.
-#     Default combining method is median.
-#     No output file is provided by default.
-#     '''
-#     combined_data = ccdp.combine(pattern, method=method, unit=u.adu,
-#                                  dtype=np.uint16, mem_limit=150e6)
-#     # sigma_clip=True, sigma_clip_low_thresh=5, sigma_clip_high_thresh=5,
-#     # sigma_clip_func=np.ma.median, signma_clip_dev_func=mad_std)
-#     #combined_bias.meta['combined'] = True
-#     if output_file is not None:
-#         combined_bias.write(output_file, overwrite=True)
-#     return combined_data
-
-
 def xyval(arr):
     '''
     Transform a matrix of values in a "x,y,value table". 
@@ -250,30 +252,6 @@ def update_keyword(header, key, *tup, comment=None):
         
     header[key] = tup
     header.add_history(hist)
-
-    return header
-
-
-def init_wcs(header):
-    '''
-    By Anna Marini
-    Valid for SPM 84cm FITS headers.
-    Updates header with basic WCS keywords to help astrometry.net
-    '''
-    angle = 90 * u.deg
-    plate = 0.25 * header['CCDXBIN']*u.arcsec
-
-    rot_matrix = plate.to(u.deg) * rotation_matrix(angle)[:-1,:-1]
-    coor = SkyCoord(header['RA'], header['DEC'],
-                    unit=(u.hourangle, u.deg),
-                    obstime=Time(header['JD'], format='jd'))
-    w = WCS(header)
-    w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-    w.wcs.crpix = [header['NAXIS1']/2, header['NAXIS2']/2]
-    w.wcs.crval = [coor.ra.degree, coor.dec.degree]
-    w.wcs.cd = rot_matrix.to(u.deg).value
-
-    header.extend(w.to_header(), update=True)    
 
     return header
 

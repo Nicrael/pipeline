@@ -18,7 +18,7 @@ def ds9(*instance):
     return d
 
 
-def show(imgs, frame=1, target=False):
+def show(*imgs, frame=1, target=False):
     '''
     Show or append a list of images or filenames in ds9.
     It is possible to choose a specific frame from which start to append.
@@ -27,8 +27,9 @@ def show(imgs, frame=1, target=False):
     d = ds9() if target is False else ds9(target)
     d.set("tile yes")
 
-    # If some images are filenames, get their data first.
+    # # If some images are filenames, get their data first.
     lst = list(imgs)
+    print(lst)
     for i,img in enumerate(lst):
         if isinstance(img, str):
             lst[i] = get_fits_data(img)
