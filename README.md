@@ -5,11 +5,11 @@ Data reduction pipeline for OARPAF data and much more
 
 Add to `~/.basrc`: 
 
-   export PATH="/home/indy/.pyenv/bin:$PATH"                                                                                                                          
-   eval "$(pyenv init -)"                                                                                                                                             
-   eval "$(pyenv virtualenv-init -)"
+    export PATH="/home/indy/.pyenv/bin:$PATH"                                                                                                                          
+    eval "$(pyenv init -)"                                                                                                                                             
+    eval "$(pyenv virtualenv-init -)"
    
-Reload :
+Reload `~/.basrc`:
    
     source ~/.basrc
 
