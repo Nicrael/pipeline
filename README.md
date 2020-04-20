@@ -2,7 +2,6 @@
 Data reduction pipeline for OARPAF data and much more 
 
     curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer | bash
-    pyenv install 3.7
 
 Add to `~/.basrc`: 
 
