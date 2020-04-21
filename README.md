@@ -13,12 +13,18 @@ Reload `~/.basrc`:
    
     source ~/.basrc
 
+Install prerequisites (as suggested here: https://github.com/pyenv/pyenv/wiki/common-build-problems)
+
+    sudo apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev \
+    libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+    xz-utils tk-dev libffi-dev liblzma-dev python-openssl git
+
 Install specific Python version
 
     pyenv install 3.6.8
     pyenv global 3.6.8
 
-Check if alias is ok:
+Check if alias is ok (if not, reload `~/.basrc` or open new terminal):
 
     python --version 
 
