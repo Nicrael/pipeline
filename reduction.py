@@ -2,21 +2,83 @@
 # -*- coding: utf-8 -*-
 
 # System modules
-from astropy.coordinates import SkyCoord
 from astropy.io import fits
-from astropy.modeling.rotations import rotation_matrix
 from astropy.nddata import CCDData
-from astropy.stats import mad_std
 from astropy.time import Time
-from astropy.wcs import WCS
 import astropy.units as u
 import numpy as np
 
+from astropy.nddata import CCDData
 import ccdproc as ccdp
+from astropy.stats import mad_std
+
+
+#                  1               2            3                   4                 5           6
+# biases ------> MBIAS
+#        darks - MBIAS ->   darks_debiased
+#                           darks_debiased -> MDARK
+#        flats - MBIAS ->   flats_debiased
+#                           flats_debiased  - MDARK -->  flats_debiased_dedarked -> MFLAT
+#      objects - MBIAS -> objects_debiased
+#                         objects_debiased  - MDARK -> objects_debiased_dedarked  / MFLAT -> objects_reduc
+#
+
+# biases, darks, flat
+#
+# 1 MBIAS               = combine(biases)
+# 2 *_debiased          = subtract_bias(*, MBIAS)
+# 3 MDARK               = combine(darks_debiased)
+# 4 *_debiased_dedarked = subtract_dark(*_debiased, MDARK)
+# 5 MFLAT               = combine(flats_debiased_dedarked)
+# 6 objects_reduc       = flat_correct(objects_debiased_dedarked, MFLAT)
+#
+
+# biases,      , flat
+#
+# 1 MBIAS               = combine(biases)
+# 2 *_debiased          = subtract_bias(*, MBIAS)
+# 5 MFLAT               = combine(flats_debiased)
+# 6 objects_reduc       = flat_correct(objects_debiased, MFLAT)
+#
+
+# biases, darks
+#
+# 1 MBIAS               = combine(biases)
+# 2 *_debiased          = subtract_bias(*, MBIAS)
+# 3 MDARK               = combine(darks_debiased)
+# 4 *_debiased_dedarked = subtract_dark(*_debiased, MDARK)
+#
+
+#         darks, flat
+#
+# 3 MDARK               = combine(darks)
+# 4 *_dedarked          = subtract_dark(*, MDARK)
+# 5 MFLAT               = combine(flats_dedarked)
+# 6 objects_reduc       = flat_correct(objects_dedarked, MFLAT)
+#
+
+# biases
+#
+# 1 MBIAS               = combine(biases)
+# 2 *_debiased          = subtract_bias(*, MBIAS)
+#
+
+#         darks
+#
+# 3 MDARK               = combine(darks)
+# 4 *_dedarked          = subtract_dark(*, MDARK)
+#
+
+#                 flat
+#
+# 5 MFLAT               = combine(flats)
+# 6 objects_reduc       = flat_correct(objects, MFLAT)
+#
+
 
 def choose_hdu(filename):
     '''
-    Detect wether the fits file is compressed with 
+    Detect wether the fits file is compressed with
     fpack, and choose the right HDU.
     '''
     finfo = fits.info(filename, output=False) # Returns a list of tuples.
@@ -26,7 +88,7 @@ def choose_hdu(filename):
     else:
         return finfo_list[0][0] # 1 if compressed
 
-    
+
 def get_fits_data_or_header(filename,get):
     '''
     Return the header or the data of a fits file.
@@ -39,12 +101,12 @@ def get_fits_data_or_header(filename,get):
             return hdul[which_hdu].data;
         else:
             return
-        
-        
+
+
 def get_fits_header(filename):
     '''
     Return the header of the fits file.
-    '''    
+    '''
     #return get_fits_data_or_header(filename,'header')
     which_hdu = choose_hdu(filename)
     return fits.getheader(filename, which_hdu)
@@ -61,7 +123,7 @@ def get_fits_data(filename):
 
 # def get_fits_data2(filename):
 #     '''
-#     Return the data of the fits file. 
+#     Return the data of the fits file.
 #     Alternative method based on fitsio.
 #     '''
 #     which_hdu = choose_hdu(filename)
@@ -69,7 +131,7 @@ def get_fits_data(filename):
 #         data = f[which_hdu].read()
 #         return data
 
-    
+
 def join_fits_header(pattern):
     '''
     Join the header of list of fits files in a tuple.
@@ -96,7 +158,7 @@ def join_fits_data(pattern):
 def stack_fits_data(tuple_of_fits_data):
     '''
     Stack the fits data in a data cube.
-    It is useful to perform pixel-per-pixel operations, 
+    It is useful to perform pixel-per-pixel operations,
     such as an average.
     '''
     datacube = np.dstack(tuple_of_fits_data)
@@ -148,7 +210,7 @@ def oarpaf_mbias(pattern, method='median', output_file=None, header=None):
     else:
         combined_data = median_datacube(datacube)
     del datacube # saving memory
-    
+
     header = get_fits_header(pattern[0]) if header else None
     if output_file is not None:
         write_fits(combined_data, output_file, header=header)
@@ -163,7 +225,7 @@ def ccdproc_mbias(pattern, output_file=None, method='median'):
     Default combining method is median.
     No output file is provided by default.
     '''
-    
+
     combined_data = ccdp.combine(ccd_data_list, method=method, unit=u.adu,
                                  dtype=np.uint16, mem_limit=1024e6)
     # sigma_clip=True, sigma_clip_low_thresh=5, sigma_clip_high_thresh=5,
@@ -176,7 +238,7 @@ def ccdproc_mbias(pattern, output_file=None, method='median'):
 
 def is_number(s):
     '''
-    Check if a string contains a (float) number. 
+    Check if a string contains a (float) number.
     Useful to test decimal or sexagesimal coordinates.
     '''
     try:
@@ -192,10 +254,10 @@ def to_number(s):
     except ValueError:
         return float(s)
 
-                    
+
 def xyval(arr):
     '''
-    Transform a matrix of values in a "x,y,value table". 
+    Transform a matrix of values in a "x,y,value table".
     Slow.
     '''
     y,x = np.indices(arr.shape)
@@ -222,7 +284,7 @@ def xyfilter(arr,value=True):
 #             header[key] = valore
 #             return header
 
-# From nested dict (json) to object  
+# From nested dict (json) to object
 # class obj(object):
 #     def __init__(self, d):
 #         for a, b in d.items():
@@ -230,7 +292,7 @@ def xyfilter(arr,value=True):
 #                 setattr(self, a, [obj(x) if isinstance(x, dict) else x for x in b])
 #             else:
 #                 setattr(self, a, obj(b) if isinstance(b, dict) else b)
-                    
+
 
 
 def update_keyword(header, key, *tup, comment=None):
@@ -241,7 +303,7 @@ def update_keyword(header, key, *tup, comment=None):
     value = tup[0].upper()
     time = Time.now()
     hist = time.isot[:-4]+" "
-    
+
     if key not in header or not header[key]:
         hist += "Created "+key+". "
     else:
@@ -249,7 +311,7 @@ def update_keyword(header, key, *tup, comment=None):
 
     if comment is not None:
         hist += comment
-        
+
     header[key] = tup
     header.add_history(hist)
 
@@ -258,8 +320,8 @@ def update_keyword(header, key, *tup, comment=None):
 
 def new_header():
     return fits.PrimaryHDU().header
-    
-def main():    
+
+def main():
     '''
     Main function
     '''
@@ -284,7 +346,7 @@ def main():
     # b = datetime.datetime.now()
     # c = b - a ; print(c.total_seconds())
 
-    
+
 if __name__ == '__main__':
     '''
     If called as a script
@@ -296,3 +358,67 @@ if __name__ == '__main__':
         sys.exit()
 
     main()
+
+
+### SBAGLIATO ###
+
+#                  1            2                  3          4,5         6        7
+# biases ------> MBIAS
+#        darks - MBIAS -> darks_clean
+#                         darks_clean --------> MDARK
+#                                       flats - MDARK -> flats_clean --> MFLAT
+#                                     objects - MDARK -> objects_clean / MFLAT -> objects_reduc
+
+# biases, darks, flat
+#
+# 1 MBIAS         = combine(biases)
+# 2 darks_clean   = subtract_bias(darks, MBIAS)
+# 3 MDARK         = combine(darks_clean)
+# 4 flats_clean   = subtract_dark(flats, MDARK)
+# 5 objects_clean = subtract_dark(objects, MDARK)
+# 6 MFLAT         = combine(flats_clean)
+# 7 objects_reduc = flat_correct(objects_clean, MFLAT)
+
+# biases, darks
+#
+# 1 MBIAS         = combine(biases)
+# 2 darks_clean   = subtract_bias(darks, MBIAS)
+# 3 MDARK         = combine(darks_clean)
+# 5 objects_clean = subtract_dark(objects, MDARK)
+#
+
+# biases,        flat
+#
+# 1 MBIAS         = combine(biases)
+# 4 flats_clean   = subtract_dark(flats, MBIAS)
+# 5 objects_clean = subtract_dark(objects, MBIAS)
+# 6 MFLAT         = combine(flats_clean)
+# 7 objects_reduc = flat_correct(objects_clean, MFLAT)
+#
+
+#         darks, flat
+#
+# 3 MDARK         = combine(darks)
+# 4 flats_clean   = subtract_dark(flats, MDARK)
+# 5 objects_clean = subtract_dark(objects, MDARK)
+# 6 MFLAT         = combine(flats_clean)
+# 7 objects_reduc = flat_correct(objects_clean, MFLAT)
+#
+
+# biases
+#
+# 1 MBIAS         = combine(biases)
+# 5 objects_clean = subtract_dark(objects, MBIAS)
+#
+
+#         darks, flat
+#
+# 3 MDARK         = combine(darks)
+# 5 objects_clean = subtract_dark(objects, MDARK)
+#
+
+#                flat
+#
+# 6 MFLAT         = combine(flats)
+# 7 objects_reduc = flat_correct(objects_clean, MFLAT)
+#
