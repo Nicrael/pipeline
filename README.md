@@ -24,7 +24,7 @@ Install specific Python version
     pyenv install 3.6.8
     pyenv global 3.6.8
 
-Check if alias is ok (if not, reload `~/.basrc` or open new terminal):
+Check if alias is ok (if not, reload `~/.bashrc` or open new terminal):
 
     python --version 
 
