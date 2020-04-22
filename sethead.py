@@ -22,21 +22,24 @@ def sethead(head, key, val):
     '''
 
     with open('cerbero-merged-array.json') as jfile:
-        head_format = json.load(jfile)['primary']
+        head_format = json.load(jfile)# ['primary']
 
-    card = [c for c in head_format if c["name"] == key]
-    form = '' if not card else card[0]["format"]
+    card = [fits.Card(**c) for c in head_format if key in c['keyword']][0]
+    #form = '' if not card else card[0]["format"]
 
-    if 'd' in form:
-        value = int(round(float(val)))
-    elif 'f' in form:
-        value = round(val, [ int(f) for f in form if f.isdigit() ][0])
-    else: # 's' in form:
-        value = f'{val:{form}}'
+    print(key)
+    if card:
+        if 'd' in card.value:
+            card.value = int(round(float(val)))
+        elif 'f' in card.value:
+            card.value = round(val, [ int(v) for v in card.value if v.isdigit() ][0])
+        else: # 's' in form:
+            card.value = f'{val:{card.value}}'
+    else:
+         print(f'{key} not in dict')
+     #head[key] = value if not card else (value, card[0]["comment"])
 
-    head[key] = value if not card else (value, card[0]["comment"])
-
-    print(key, val, "→", form, "→", value)
+    #print(key, val, "→", form, "→", value)
 
 
     return head

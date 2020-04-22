@@ -19,11 +19,11 @@ from sethead import sethead
 
 class observatory():
 
-    def __init__(self, **kwargs):        
+    def __init__(self, **kwargs):
         '''
         Set default parameters.
         '''
-                 
+
         # Header keywords
         self.ra = kwargs.get('ra', 'RA')
         self.dec = kwargs.get('dec', 'DEC')
@@ -33,8 +33,8 @@ class observatory():
         self.temperature = kwargs.get('temperature')
         self.pressure = kwargs.get('pressure')
         self.humidity = kwargs.get('humidity')
-        
-        # Constants        
+
+        # Constants
         self.lon =  kwargs.get('lon')
         self.lat =  kwargs.get('lat')
         self.alt =  kwargs.get('alt', 0)
@@ -47,7 +47,7 @@ class observatory():
         Mainly for test purposes
         '''
         self.filename = filename
-            
+
         self.skycoord()
         self.detector()
         self.wcs()
@@ -60,7 +60,7 @@ class observatory():
     def filename(self, value):
         self._filename = value
         self.head = get_fits_header(value)
-        
+
 
     def skycoord(self):
         head = self.head
@@ -69,9 +69,9 @@ class observatory():
         location = EarthLocation(lon=self.lon,
                                  lat=self.lat,
                                  height=self.alt)
-        
+
         # time
-        timekey = head[self.obstime]        
+        timekey = head[self.obstime]
         if 'MJD' in self.obstime:
             obstime = Time(timekey, format='mjd')
         elif self.obstime == 'JD':
@@ -84,7 +84,7 @@ class observatory():
             obstime = Time(timekey)
 
         obstime.location=location
-        
+
         # skycoord
         if self.ra and self.ra in head and self.dec in head:
             coord = SkyCoord(ra=head[self.ra],
@@ -95,21 +95,21 @@ class observatory():
         else:
             return
 
-        # Meteo 
+        # Meteo
         if self.temperature and self.temperature in head:
             coord.temperature = head[self.temperature] *u.deg_C
         if self.pressure and self.pressure in head:
             coord.pressure = head[self.pressure] *u.hPa
         if self.humidity and self.humidity in head:
-            coord.relative_humidity = head[self.humidity]/ 100 
-        
+            coord.relative_humidity = head[self.humidity]/ 100
+
         coord.location=location
         coord.obstime=obstime
 
         self.coord = coord
         return coord
 
-    
+
     def detector(self):
         '''
         Manage keywords related to the detector.
@@ -126,12 +126,12 @@ class observatory():
             self.scale = 1
 
         plate = self.scale * bins[0]
-        
+
         self.bins = bins
         self.plate = plate
         return plate
 
-        
+
     def wcs(self):
         '''From Anna Marini.
         Provide WCS keywords to convert pixel coordinates of the
@@ -166,11 +166,11 @@ class observatory():
         # For other methods
         self.w = w
         return w
-    
+
 
     def newhead(self):
         nh = new_header()
-                
+
         if not hasattr(self, 'plate'):
             self.detector()
 
@@ -179,9 +179,9 @@ class observatory():
 
         if not hasattr(self, 'w'):
             self.wcs()
-        
+
         c = self.coord
-            
+
         # location
         sethead(nh, "latitude", c.location.lat.deg)
         sethead(nh, "longitud", c.location.lon.deg)
@@ -191,9 +191,9 @@ class observatory():
         sethead(nh, "mjd-obs", c.obstime.mjd)
         sethead(nh, "jd", c.obstime.jd)
         sethead(nh, "date-obs", c.obstime.isot[:-4])
-        sethead(nh, "st", c.obstime.sidereal_time("mean").hour)
+        sethead(nh, "lst", c.obstime.sidereal_time("mean").hour)
         sethead(nh, "equinox", c.obstime.jyear)
-        
+
         # detector
         sethead(nh, "plate", self.plate)
 
@@ -207,7 +207,7 @@ class observatory():
         sethead(nh, "az", c.altaz.az.deg)
         sethead(nh, "airmass", c.altaz.secz.value)
         sethead(nh, "zdist", c.altaz.zen.deg)
-        
+
         sun_radec = get_sun(c.obstime)
         sun_altaz = sun_radec.transform_to(c.altaz)
         moon_radec = get_moon(c.obstime)
@@ -219,19 +219,19 @@ class observatory():
         sethead(nh, "moondist", moon_radec.separation(c).deg)
 
         sethead(nh, "filename", self.filename.split("/")[-1])
-        
+
         # wcs
-        nh.extend(self.w.to_header(), update=True)
-        
+        #nh.extend(self.w.to_header(), update=True)
+
         #self.header.extend(w.to_header(), update=True)
         # self.header.rename_keyword("PC1_1", "CD1_1", force=True)
 
         nh.add_comment("Created by "+type(self).__name__)
-        
+
         self.nh = nh
 
-            
-def main():    
+
+def main():
     '''
     Main function
     '''
@@ -243,7 +243,7 @@ def main():
     o = observatory(**instrument)
 
     print(instrument)
-    
+
     pattern = sys.argv[2:]
     for filename in pattern:
         o.filename = filename
@@ -251,7 +251,7 @@ def main():
         o.newhead()
         print(o.nh)
 
-        
+
 if __name__ == '__main__':
     '''
     If called as a script

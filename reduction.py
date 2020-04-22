@@ -2,15 +2,19 @@
 # -*- coding: utf-8 -*-
 
 # System modules
-from astropy.io import fits
+from astropy.io import fits, ascii
 from astropy.nddata import CCDData
 from astropy.time import Time
 import astropy.units as u
 import numpy as np
+from astropy.stats import sigma_clip
 
 from astropy.nddata import CCDData
 import ccdproc as ccdp
 from astropy.stats import mad_std
+from astropy.table import Table
+
+#from operator import eq gt lt
 
 
 #                  1               2            3                   4                 5           6
@@ -84,9 +88,9 @@ def choose_hdu(filename):
     finfo = fits.info(filename, output=False) # Returns a list of tuples.
     finfo_list = [item for item in finfo if 'COMPRESSED_IMAGE' in item]
     if not finfo_list:
-        return finfo[0][0] # 0 if not compressed
+        return 0 # finfo[0][0] # 0 if not compressed
     else:
-        return finfo_list[0][0] # 1 if compressed
+        return 1 # finfo_list[0][0] # 1 if compressed
 
 
 def get_fits_data_or_header(filename,get):
@@ -132,15 +136,90 @@ def get_fits_data(filename):
 #         return data
 
 
+def is_keyval_in_header(header, keyword, value):
+    if keyword in header:
+        if header[keyword] == value:
+            return True # "key == value"
+        else:
+            return False # "key != value"
+    else:
+        return False # "no key"
+
+
+def is_keyval_in_file(filename, keyword, value):
+    header = get_fits_header(filename)
+    return is_keyval_in_header(header, keyword, value)
+
+
+def frame_dict(filename, with_data=False):
+    '''
+    Create a dictionary related to an observation frame
+    '''
+    fd = {
+        'name' : filename,
+        'head' : get_fits_header(filename),
+        'data' : None,
+        }
+    if with_data:
+        fd['data'] = get_fits_data(filename)
+
+    return fd
+
+
+class AttrDict(dict):
+    '''
+    Create an objects where properties are dict keys.
+    '''
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
+
+
+def frame(filename):
+    '''
+    Create a frame object related to an observation frame
+    '''
+    fr = AttrDict(frame_dict(filename))
+
+    return fr
+
+
+def frame_list(pattern):
+    '''
+    Create a list of frames from filename pattern
+    '''
+    list1 = []
+    for filename in pattern:
+        list1.append(frame(filename))
+
+    return list1
+
+
+# shortcuts
+
+# pattern
+# heads = [ get_fits_header(f) for f in pattern ]
+# sub_heads = is_keyword_in_header(heads, 'filter', 'vacio + B3')
+# frames = [ frame(f) for f in pattern if is_keyword_in_file(f, 'filter', 'vacio + B3') ]
+# datas = [ get_fits_data(f) for f in pattern ]
+# ccds =  [ ccdp.CCDData(d, unit='adu') for d in datas ]
+
+# pattern
+# all_frames = frame_list(pattern)
+# frames = [ f for f in all_frames if f.head['filter']  == 'vacio + B3']
+# files = [ f.name for f in frames]
+# heads = [ f.head for f in frames]
+#### datas = [ f.data for f in frames]
+# ccds =  [ ccdp.CCDData(d, unit='adu') for d in datas ]
+# ccds = [ ccdp.CCDData(get_fits_data(f.name), unit='adu') for f in frames ]
+
+
 def join_fits_header(pattern):
     '''
-    Join the header of list of fits files in a tuple.
+    Join the header of list of fits files in a list.
     '''
-    tuple_of_fits_header = ()
-    for filename in pattern:
-        fits_header = get_fits_header(filename)
-        tuple_of_fits_header += (fits_header,)
-    return tuple_of_fits_header
+    heads = [ get_fits_header(f) for f in pattern ]
+    return heads
 
 
 def join_fits_data(pattern):
@@ -148,20 +227,17 @@ def join_fits_data(pattern):
     Join the data of a list of fits files in a tuple.
     Tuple format is useful for stacking in a data cube.
     '''
-    tuple_of_fits_data = ()
-    for filename in pattern:
-        fits_data = get_fits_data(filename)
-        tuple_of_fits_data += (fits_data,)
-    return tuple_of_fits_data
+    datas = [ get_fits_data(f) for f in pattern ]
+    return datas
 
 
-def stack_fits_data(tuple_of_fits_data):
+def stack_fits_data(datas):
     '''
-    Stack the fits data in a data cube.
+    Stack a list of fits datas in a data cube.
     It is useful to perform pixel-per-pixel operations,
     such as an average.
     '''
-    datacube = np.dstack(tuple_of_fits_data)
+    datacube = np.dstack(datas)
     return datacube
 
 
@@ -178,15 +254,17 @@ def average_datacube(datacube):
     '''
     Make an average of a data cube.
     '''
+    datatype=datacube.dtype
     average = np.average(datacube, axis=2)
-    return average
+    return average.astype(datatype)
 
 
 def write_fits(data, filename, header=None):
     '''
-    Writes a fits file.
+    Write a fits file.
     It adds a checksum keyword.
     '''
+
     if header is None:
         hdu = fits.PrimaryHDU(data)
     else:
@@ -195,7 +273,7 @@ def write_fits(data, filename, header=None):
     return hdu
 
 
-def oarpaf_mbias(pattern, method='median', output_file=None, header=None):
+def oarpaf_combine(pattern, method='median', output_file=None, header=None):
     '''
     Custom master bias routine.
     Calculates the master bias of a list of of fits files.
@@ -212,28 +290,63 @@ def oarpaf_mbias(pattern, method='median', output_file=None, header=None):
     del datacube # saving memory
 
     header = get_fits_header(pattern[0]) if header else None
-    if output_file is not None:
+
+    if output_file:
         write_fits(combined_data, output_file, header=header)
+
     return combined_data
 
 
-def ccdproc_mbias(pattern, output_file=None, method='median'):
-    ccd_data_list = [ccdp.CCDData(p, unit="adu")  for p in pattern ]
+def oarpaf_mask(data, sigma=3, output_file=None, header=None):
+
+    mask = sigma_clip(data, masked=True).mask.astype(int)
+
+    if output_file:
+        write_fits(mask, output_file, header=header)
+
+    return mask
+
+
+def oarpaf_mask_reg(data, sigma=3, output_file=None):
+
+    y,x = np.where(data == True)
+    p = np.repeat("point ", y.size)
+    t = [p, x+1,y+1]
+
+    table = Table(t, names=['# ','## ','###']) # bleah
+
+    if output_file:
+        ascii.write(table, output_file, overwrite=True)
+
+    return table
+
+
+def ccdproc_mbias(pattern, output_file=None, header=None, method='median'):
     '''
     CCDproc-based master bias routine.
-    Calculates the master bias of a tuple of fits data.
+    Calculates the master bias of a list of fits data.
     Default combining method is median.
     No output file is provided by default.
     '''
 
+    joined_fits = join_fits_data(pattern)
+    ccd_data_list = [ccdp.CCDData(d, unit="adu") for d in joined_fits ]
+
     combined_data = ccdp.combine(ccd_data_list, method=method, unit=u.adu,
-                                 dtype=np.uint16, mem_limit=1024e6)
-    # sigma_clip=True, sigma_clip_low_thresh=5, sigma_clip_high_thresh=5,
-    # sigma_clip_func=np.ma.median, signma_clip_dev_func=mad_std)
-    #combined_bias.meta['combined'] = True
-    if output_file is not None:
-        combined_bias.write(output_file, overwrite=True)
+                                 dtype=np.uint16, mem_limit=512e6, #)
+                                 sigma_clip=True)  #, sigma_clip_low_thresh=5, sigma_clip_high_thresh=5,
+                                 #sigma_clip_func=np.ma.median) #, signma_clip_dev_func=mad_std)
+                                 #combined_bias.meta['combined'] = True
+
+    if output_file:
+        combined_bias.write(output_file, header=header, overwrite=True)
+
     return combined_data
+
+
+def to_list(arg):
+    if type(arg) is not list: arg = [ arg ]
+    return arg
 
 
 def is_number(s):
@@ -253,36 +366,6 @@ def to_number(s):
         return int(s)
     except ValueError:
         return float(s)
-
-
-def xyval(arr):
-    '''
-    Transform a matrix of values in a "x,y,value table".
-    Slow.
-    '''
-    y,x = np.indices(arr.shape)
-    return x.ravel()+1, y.ravel()+1, arr.ravel()
-
-
-def xyfilter(arr,value=True):
-    '''
-    Filter where the value of an "x,y,value table" is equal to a specific value.
-    Default value is True. Useful to calculate a bad pixel map for ds9.
-    '''
-    return arr[0][arr[2]],arr[1][arr[2]]
-
-
-# def update_keyword(key,valore,pattern):
-#     '''
-#     By Anna Marini
-#     Updates or create a keyword/value header pair of a given fits file list.
-#     '''
-#     for filename in pattern:
-#         which_hdu = choose_hdu(pattern)
-#         with fits.open(filename,'update') as hdul:
-#             header = hdul[which_hdu].header;
-#             header[key] = valore
-#             return header
 
 # From nested dict (json) to object
 # class obj(object):
@@ -327,24 +410,7 @@ def main():
     '''
     pattern = sys.argv[1:] # File(s). "1:" stands for "From 1 on".
 
-    # import datetime
-
-    # In [357]: clipped=stats.sigma_clip(ccdbias,sigma=3)
-    # In [358]: bbb=mbias.xyval(clipped.mask)
-    # In [359]: ddd=mbias.xyfilter(bbb)
-    # In [360]: ascii.write(ddd,'mask.reg',overwrite=True)
-
     # dfits ~/desktop/oarpaf/test-sbig-stx/*.fits | fitsort IMAGETYP NAXIS1 DATE-OBS | grep 'Bias' |grep '4096' |grep '2019-11-22' | awk '{print $1}'
-
-    #a = datetime.datetime.now()
-    oarpaf_mbias(pattern)
-    #b = datetime.datetime.now()
-    #c = b - a ; print(c.total_seconds())
-
-    # a = datetime.datetime.now()
-    # ccdproc_mbias(pattern)
-    # b = datetime.datetime.now()
-    # c = b - a ; print(c.total_seconds())
 
 
 if __name__ == '__main__':
@@ -358,67 +424,3 @@ if __name__ == '__main__':
         sys.exit()
 
     main()
-
-
-### SBAGLIATO ###
-
-#                  1            2                  3          4,5         6        7
-# biases ------> MBIAS
-#        darks - MBIAS -> darks_clean
-#                         darks_clean --------> MDARK
-#                                       flats - MDARK -> flats_clean --> MFLAT
-#                                     objects - MDARK -> objects_clean / MFLAT -> objects_reduc
-
-# biases, darks, flat
-#
-# 1 MBIAS         = combine(biases)
-# 2 darks_clean   = subtract_bias(darks, MBIAS)
-# 3 MDARK         = combine(darks_clean)
-# 4 flats_clean   = subtract_dark(flats, MDARK)
-# 5 objects_clean = subtract_dark(objects, MDARK)
-# 6 MFLAT         = combine(flats_clean)
-# 7 objects_reduc = flat_correct(objects_clean, MFLAT)
-
-# biases, darks
-#
-# 1 MBIAS         = combine(biases)
-# 2 darks_clean   = subtract_bias(darks, MBIAS)
-# 3 MDARK         = combine(darks_clean)
-# 5 objects_clean = subtract_dark(objects, MDARK)
-#
-
-# biases,        flat
-#
-# 1 MBIAS         = combine(biases)
-# 4 flats_clean   = subtract_dark(flats, MBIAS)
-# 5 objects_clean = subtract_dark(objects, MBIAS)
-# 6 MFLAT         = combine(flats_clean)
-# 7 objects_reduc = flat_correct(objects_clean, MFLAT)
-#
-
-#         darks, flat
-#
-# 3 MDARK         = combine(darks)
-# 4 flats_clean   = subtract_dark(flats, MDARK)
-# 5 objects_clean = subtract_dark(objects, MDARK)
-# 6 MFLAT         = combine(flats_clean)
-# 7 objects_reduc = flat_correct(objects_clean, MFLAT)
-#
-
-# biases
-#
-# 1 MBIAS         = combine(biases)
-# 5 objects_clean = subtract_dark(objects, MBIAS)
-#
-
-#         darks, flat
-#
-# 3 MDARK         = combine(darks)
-# 5 objects_clean = subtract_dark(objects, MDARK)
-#
-
-#                flat
-#
-# 6 MFLAT         = combine(flats)
-# 7 objects_reduc = flat_correct(objects_clean, MFLAT)
-#
