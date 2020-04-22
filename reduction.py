@@ -14,9 +14,6 @@ import ccdproc as ccdp
 from astropy.stats import mad_std
 from astropy.table import Table
 
-#from operator import eq gt lt
-
-
 #                  1               2            3                   4                 5           6
 # biases ------> MBIAS
 #        darks - MBIAS ->   darks_debiased
