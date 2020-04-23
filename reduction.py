@@ -71,94 +71,6 @@ def is_keyval_in_file(filename, key, val):
     return is_keyval_in_header(header, keyword, value)
 
 
-def frame_dict(filename, with_data=False):
-    '''
-    Create a dictionary related to an observation frame
-    '''
-    fd = {
-        'name' : filename,
-        'head' : get_fits_header(filename),
-        'data' : None,
-        }
-    if with_data:
-        fd['data'] = get_fits_data(filename)
-
-    return fd
-
-
-class AttrDict(dict):
-    '''
-    Create an objects where properties are dict keys.
-    '''
-    def __init__(self, *args, **kwargs):
-        super(AttrDict, self).__init__(*args, **kwargs)
-        self.__dict__ = self
-
-
-def frame(filename):
-    '''
-    Create a frame object related to an observation frame
-    '''
-    fr = AttrDict(frame_dict(filename))
-
-    return fr
-
-
-def frame_list(pattern):
-    '''
-    Create a list of frames from filename pattern
-    '''
-    list1 = []
-    for filename in pattern:
-        list1.append(frame(filename))
-
-    return list1
-
-
-def join_fits_header(pattern):
-    '''
-    Join the header of list of fits files in a list.
-    '''
-    heads = np.array([ get_fits_header(f) for f in pattern ])
-    return heads
-
-
-def join_fits_data(pattern):
-    '''
-    Join the data of a list of fits files in a tuple.
-    Tuple format is useful for stacking in a data cube.
-    '''
-    datas = np.array([ get_fits_data(f) for f in pattern ])
-    return datas
-
-
-def stack_fits_data(datas):
-    '''
-    Stack a list of fits datas in a data cube.
-    It is useful to perform pixel-per-pixel operations,
-    such as an average.
-    '''
-    datacube = np.dstack(datas)
-    return datacube
-
-
-def median_datacube(datacube):
-    '''
-    Make a median of a data cube.
-    '''
-    datatype=datacube.dtype
-    median = np.median(datacube, axis=2, overwrite_input=True)
-    return median.astype(datatype)
-
-
-def average_datacube(datacube):
-    '''
-    Make an average of a data cube.
-    '''
-    datatype=datacube.dtype
-    average = np.average(datacube, axis=2)
-    return average.astype(datatype)
-
 
 def write_fits(data, filename, header=None):
     '''
@@ -174,34 +86,12 @@ def write_fits(data, filename, header=None):
     return hdu
 
 
-def oarpaf_combine(pattern, method='median', output_file=None, header=None):
-    '''
-    Custom master bias routine.
-    Calculates the master bias of a list of of fits files.
-    Default combining method is median.
-    No output file is provided by default.
-    '''
-    joined_fits = join_fits_data(pattern)
-    datacube = stack_fits_data(joined_fits)
-    del joined_fits # saving memory
-    if method is 'average':
-        combined_data = average_datacube(datacube)
-    else:
-        combined_data = median_datacube(datacube)
-    del datacube # saving memory
-
-    header = get_fits_header(pattern[0]) if header else None
-
-    if output_file:
-        write_fits(combined_data, output_file, header=header)
-
-    return combined_data
-
 
 def oarpaf_mask(data, sigma=3, output_file=None, header=None):
-
+    '''
+    Create a bad pixel mask
+    '''
     mask = sigma_clip(data, masked=True).mask.astype(int)
-
     if output_file:
         write_fits(mask, output_file, header=header)
 
@@ -209,6 +99,9 @@ def oarpaf_mask(data, sigma=3, output_file=None, header=None):
 
 
 def oarpaf_mask_reg(data, sigma=3, output_file=None):
+    '''
+    Create a bad pixel region table
+    '''
 
     y,x = np.where(data == True)
     p = np.repeat("point ", y.size)
@@ -221,6 +114,75 @@ def oarpaf_mask_reg(data, sigma=3, output_file=None):
 
     return table
 
+def subtract(keys, pattern, prod, master=None):
+    '''
+    Subtract two images
+    '''
+    if not master:
+        master = 0
+    correct(keys, pattern, prod, master)
+
+
+def divide(keys, pattern, prod, master=None, operation='flat'):
+    '''
+    Divide two images
+    '''
+    if not master:
+        master = 1
+    correct(keys, pattern, prod, master)
+
+
+def combine(keys, pattern, prod, method='average', normalize=False):
+    '''
+    Combine a pattern of images using average (default) or median.
+    Loops over a list of keywords. normalize=True to combine flats.
+    '''
+
+    print('Getting headers of all files in pattern')
+    heads = [ r.get_fits_header(i) for i in pattern ]
+    values = {tuple(h[k] for k in keys) for h in heads}
+    # {('U', 10), ('U', 20), ('B', 10), ('B', 20)
+
+    for value in values: # ('U', 10)
+        a = Time.now()
+        # FILTER!!! WOW!
+        names = { p for p,h in zip(pattern,heads) if tuple(h[k] for k in keys) == value }
+
+        datas = [r.get_fits_data(d) for d in names ]
+        if normalize:
+            datas = [ d/np.mean(d) for d in data ]
+        combined = np.median(datas, axis=2)
+
+        print(f'{keys} {value} -> {len(names)} elements.')
+        print(f'Done in {Time.now().unix - a.unix :.1f}s')
+
+
+def correct(keys, pattern, prod, master, operation=None):
+    '''
+    Take a pattern of file names. Correct data against a master.
+    Use To subtract or divide.
+    '''
+
+    print('Getting headers of all files in pattern')
+    heads = [ r.get_fits_header(i) for i in pattern ]
+    values = {tuple(h[k] for k in keys) for h in heads}
+    # {('U', 10), ('U', 20), ('B', 10), ('B', 20)
+
+    for value in values: # ('U', 10)
+        a = Time.now()
+        # FILTER!!! WOW!
+        names = { p for p,h in zip(pattern,heads) if tuple(h[k] for k in keys) == value }
+
+        for name in names:
+            if operation != 'flat':
+                r.get_fits_data(name) - master
+            else:
+                r.get_fits_data(name) / master
+
+        print(f'{keys} {value} -> {len(names)} elements.')
+        print(f'Done in {Time.now().unix - a.unix :.1f}s')
+
+
 
 def ccdproc_mbias(pattern, output_file=None, header=None, method='median'):
     '''
@@ -230,7 +192,7 @@ def ccdproc_mbias(pattern, output_file=None, header=None, method='median'):
     No output file is provided by default.
     '''
 
-    joined_fits = join_fits_data(pattern)
+    joined_fits = [get_fits_data(p) for p in pattern]
     ccd_data_list = [ccdp.CCDData(d, unit="adu") for d in joined_fits ]
 
     combined_data = ccdp.combine(ccd_data_list, method=method, unit=u.adu,
@@ -288,6 +250,98 @@ if __name__ == '__main__':
     main()
 
 #### Cemetery of old functions #####
+
+# def frame_dict(filename, with_data=False):
+#     '''
+#     Create a dictionary related to an observation frame
+#     '''
+#     fd = {
+#         'name' : filename,
+#         'head' : get_fits_header(filename),
+#         'data' : None,
+#         }
+#     if with_data:
+#         fd['data'] = get_fits_data(filename)
+
+#     return fd
+
+
+# class AttrDict(dict):
+#     '''
+#     Create an objects where properties are dict keys.
+#     '''
+#     def __init__(self, *args, **kwargs):
+#         super(AttrDict, self).__init__(*args, **kwargs)
+#         self.__dict__ = self
+
+
+# def join_fits_header(pattern):
+#     '''
+#     Join the header of list of fits files in a list.
+#     '''
+#     heads = np.array([ get_fits_header(f) for f in pattern ])
+#     return heads
+
+
+# def join_fits_data(pattern):
+#     '''
+#     Join the data of a list of fits files in a tuple.
+#     Tuple format is useful for stacking in a data cube.
+#     '''
+#     datas = np.array([ get_fits_data(f) for f in pattern ])
+#     return datas
+
+
+# def stack_fits_data(datas):
+#     '''
+#     Stack a list of fits datas in a data cube.
+#     It is useful to perform pixel-per-pixel operations,
+#     such as an average.
+#     '''
+#     datacube = np.dstack(datas)
+#     return datacube
+
+
+# def median_datacube(datacube):
+#     '''
+#     Make a median of a data cube.
+#     '''
+#     datatype=datacube.dtype
+#     median = np.median(datacube, axis=2)
+#     return median.astype(datatype)
+
+
+# def average_datacube(datacube):
+#     '''
+#     Make an average of a data cube.
+#     '''
+#     datatype=datacube.dtype
+#     average = np.average(datacube, axis=2)
+#     return average.astype(datatype)
+
+
+# def oarpaf_combine(pattern, method='median', output_file=None, header=None):
+#     '''
+#     Custom master bias routine.
+#     Calculates the master bias of a list of of fits files.
+#     Default combining method is median.
+#     No output file is provided by default.
+#     '''
+#     joined_fits = join_fits_data(pattern)
+#     datacube = stack_fits_data(joined_fits)
+#     del joined_fits # saving memory
+#     if method is 'average':
+#         combined_data = average_datacube(datacube)
+#     else:
+#         combined_data = median_datacube(datacube)
+#     del datacube # saving memory
+
+#     header = get_fits_header(pattern[0]) if header else None
+
+#     if output_file:
+#         write_fits(combined_data, output_file, header=header)
+
+#     return combined_data
 
 # def new_header():
 #     return fits.PrimaryHDU().header
@@ -348,3 +402,24 @@ if __name__ == '__main__':
 #                 setattr(self, a, [obj(x) if isinstance(x, dict) else x for x in b])
 #             else:
 #                 setattr(self, a, obj(b) if isinstance(b, dict) else b)
+
+
+
+# def frame(filename):
+#     '''
+#     Create a frame object related to an observation frame
+#     '''
+#     fr = AttrDict(frame_dict(filename))
+
+#     return fr
+
+
+# def frame_list(pattern):
+#     '''
+#     Create a list of frames from filename pattern
+#     '''
+#     list1 = []
+#     for filename in pattern:
+#         list1.append(frame(filename))
+
+#     return list1
