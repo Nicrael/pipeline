@@ -14,7 +14,7 @@ import numpy as np
 import json
 
 # Our modules
-from reduction import get_fits_header, is_number, to_number, new_header
+import reduction as r
 from sethead import sethead
 
 class observatory():
@@ -24,22 +24,24 @@ class observatory():
         Set default parameters.
         '''
 
-        # Header keywords
+        # Header keywords with defaults
         self.ra = kwargs.get('ra', 'RA')
         self.dec = kwargs.get('dec', 'DEC')
         self.obj = kwargs.get('obj', 'OBJECT')
-        self.obstime = kwargs.get('obstime', 'JD')
+        self.obstime = kwargs.get('obstime', 'MJD-OBS')
+
+        # Header keywords optional
         self.binning = kwargs.get('binning')
         self.temperature = kwargs.get('temperature')
         self.pressure = kwargs.get('pressure')
         self.humidity = kwargs.get('humidity')
 
-        # Constants
+        # Constants and defaults
         self.lon =  kwargs.get('lon')
         self.lat =  kwargs.get('lat')
         self.alt =  kwargs.get('alt', 0)
         self.unit =  kwargs.get('unit', (u.hour, u.deg))
-        self.scale =  kwargs.get('scale')
+        self.scale =  kwargs.get('scale', 0.5) # in binning 1,
 
     def test(self, filename):
         '''
@@ -59,7 +61,7 @@ class observatory():
     @filename.setter # On new file, update data
     def filename(self, value):
         self._filename = value
-        self.head = get_fits_header(value)
+        self.head = r.get_fits_header(value)
 
 
     def skycoord(self):
@@ -86,13 +88,14 @@ class observatory():
         obstime.location=location
 
         # skycoord
-        if self.ra and self.ra in head and self.dec in head:
+        if self.ra in head and self.dec in head:
             coord = SkyCoord(ra=head[self.ra],
                              dec=head[self.dec],
                              unit=self.unit)
         elif self.obj in head:
             coord = SkyCoord.from_name(head[self.obj])
         else:
+            print("No (RA DEC) and no OBJECT in header")
             return
 
         # Meteo
@@ -122,9 +125,6 @@ class observatory():
         else:
             bins = [1, 1]
 
-        if not self.scale:
-            self.scale = 1
-
         plate = self.scale * bins[0]
 
         self.bins = bins
@@ -133,7 +133,7 @@ class observatory():
 
 
     def wcs(self):
-        '''From Anna Marini.
+        '''By Anna Marini.
         Provide WCS keywords to convert pixel coordinates of the
         files to sky coordinates. It uses the rotational matrix
         obtained in previous function (which_instrument)
@@ -169,7 +169,7 @@ class observatory():
 
 
     def newhead(self):
-        nh = new_header()
+        nh = fits.PrimaryHDU().header
 
         if not hasattr(self, 'plate'):
             self.detector()

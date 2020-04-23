@@ -3,7 +3,6 @@
 
 # System modules
 from astropy.io import fits, ascii
-from astropy.nddata import CCDData
 from astropy.time import Time
 import astropy.units as u
 import numpy as np
@@ -19,63 +18,12 @@ from astropy.table import Table
 #        darks - MBIAS ->   darks_debiased
 #                           darks_debiased -> MDARK
 #        flats - MBIAS ->   flats_debiased
-#                           flats_debiased  - MDARK -->  flats_debiased_dedarked -> MFLAT
+#                           flats_debiased  - MDARK -->  flats_debiased_dedarked
+#                                                        flats_debiased_dedarked -> MFLAT
 #      objects - MBIAS -> objects_debiased
-#                         objects_debiased  - MDARK -> objects_debiased_dedarked  / MFLAT -> objects_reduc
+#                         objects_debiased  - MDARK -> objects_debiased_dedarked
+#                                                      objects_debiased_dedarked  / MFLAT -> objects_reduc
 #
-
-# biases, darks, flat
-#
-# 1 MBIAS               = combine(biases)
-# 2 *_debiased          = subtract_bias(*, MBIAS)
-# 3 MDARK               = combine(darks_debiased)
-# 4 *_debiased_dedarked = subtract_dark(*_debiased, MDARK)
-# 5 MFLAT               = combine(flats_debiased_dedarked)
-# 6 objects_reduc       = flat_correct(objects_debiased_dedarked, MFLAT)
-#
-
-# biases,      , flat
-#
-# 1 MBIAS               = combine(biases)
-# 2 *_debiased          = subtract_bias(*, MBIAS)
-# 5 MFLAT               = combine(flats_debiased)
-# 6 objects_reduc       = flat_correct(objects_debiased, MFLAT)
-#
-
-# biases, darks
-#
-# 1 MBIAS               = combine(biases)
-# 2 *_debiased          = subtract_bias(*, MBIAS)
-# 3 MDARK               = combine(darks_debiased)
-# 4 *_debiased_dedarked = subtract_dark(*_debiased, MDARK)
-#
-
-#         darks, flat
-#
-# 3 MDARK               = combine(darks)
-# 4 *_dedarked          = subtract_dark(*, MDARK)
-# 5 MFLAT               = combine(flats_dedarked)
-# 6 objects_reduc       = flat_correct(objects_dedarked, MFLAT)
-#
-
-# biases
-#
-# 1 MBIAS               = combine(biases)
-# 2 *_debiased          = subtract_bias(*, MBIAS)
-#
-
-#         darks
-#
-# 3 MDARK               = combine(darks)
-# 4 *_dedarked          = subtract_dark(*, MDARK)
-#
-
-#                 flat
-#
-# 5 MFLAT               = combine(flats)
-# 6 objects_reduc       = flat_correct(objects, MFLAT)
-#
-
 
 def choose_hdu(filename):
     '''
@@ -88,20 +36,6 @@ def choose_hdu(filename):
         return 0 # finfo[0][0] # 0 if not compressed
     else:
         return 1 # finfo_list[0][0] # 1 if compressed
-
-
-def get_fits_data_or_header(filename,get):
-    '''
-    Return the header or the data of a fits file.
-    '''
-    which_hdu = choose_hdu(filename)
-    with fits.open(filename) as hdul:
-        if get is 'header':
-            return hdul[which_hdu].header;
-        elif get is 'data':
-            return hdul[which_hdu].data;
-        else:
-            return
 
 
 def get_fits_header(filename):
@@ -122,28 +56,17 @@ def get_fits_data(filename):
     return fits.getdata(filename, which_hdu)
 
 
-# def get_fits_data2(filename):
-#     '''
-#     Return the data of the fits file.
-#     Alternative method based on fitsio.
-#     '''
-#     which_hdu = choose_hdu(filename)
-#     with fitsio.FITS(filename) as f:
-#         data = f[which_hdu].read()
-#         return data
+def is_keyval_in_header(head, key, val):
+    '''
+    Alternative for 'x' in header and header['x'] == 'y'
+    '''
+    return key in head and head[key] == val
 
 
-def is_keyval_in_header(header, keyword, value):
-    if keyword in header:
-        if header[keyword] == value:
-            return True # "key == value"
-        else:
-            return False # "key != value"
-    else:
-        return False # "no key"
-
-
-def is_keyval_in_file(filename, keyword, value):
+def is_keyval_in_file(filename, key, val):
+    '''
+    Alternative for 'x' in fits and fits['x'] == 'y'
+    '''
     header = get_fits_header(filename)
     return is_keyval_in_header(header, keyword, value)
 
@@ -192,30 +115,11 @@ def frame_list(pattern):
     return list1
 
 
-# shortcuts
-
-# pattern
-# heads = [ get_fits_header(f) for f in pattern ]
-# sub_heads = is_keyword_in_header(heads, 'filter', 'vacio + B3')
-# frames = [ frame(f) for f in pattern if is_keyword_in_file(f, 'filter', 'vacio + B3') ]
-# datas = [ get_fits_data(f) for f in pattern ]
-# ccds =  [ ccdp.CCDData(d, unit='adu') for d in datas ]
-
-# pattern
-# all_frames = frame_list(pattern)
-# frames = [ f for f in all_frames if f.head['filter']  == 'vacio + B3']
-# files = [ f.name for f in frames]
-# heads = [ f.head for f in frames]
-#### datas = [ f.data for f in frames]
-# ccds =  [ ccdp.CCDData(d, unit='adu') for d in datas ]
-# ccds = [ ccdp.CCDData(get_fits_data(f.name), unit='adu') for f in frames ]
-
-
 def join_fits_header(pattern):
     '''
     Join the header of list of fits files in a list.
     '''
-    heads = [ get_fits_header(f) for f in pattern ]
+    heads = np.array([ get_fits_header(f) for f in pattern ])
     return heads
 
 
@@ -224,7 +128,7 @@ def join_fits_data(pattern):
     Join the data of a list of fits files in a tuple.
     Tuple format is useful for stacking in a data cube.
     '''
-    datas = [ get_fits_data(f) for f in pattern ]
+    datas = np.array([ get_fits_data(f) for f in pattern ])
     return datas
 
 
@@ -341,40 +245,6 @@ def ccdproc_mbias(pattern, output_file=None, header=None, method='median'):
     return combined_data
 
 
-def to_list(arg):
-    if type(arg) is not list: arg = [ arg ]
-    return arg
-
-
-def is_number(s):
-    '''
-    Check if a string contains a (float) number.
-    Useful to test decimal or sexagesimal coordinates.
-    '''
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
-
-
-def to_number(s):
-    try:
-        return int(s)
-    except ValueError:
-        return float(s)
-
-# From nested dict (json) to object
-# class obj(object):
-#     def __init__(self, d):
-#         for a, b in d.items():
-#             if isinstance(b, (list, tuple)):
-#                 setattr(self, a, [obj(x) if isinstance(x, dict) else x for x in b])
-#             else:
-#                 setattr(self, a, obj(b) if isinstance(b, dict) else b)
-
-
-
 def update_keyword(header, key, *tup, comment=None):
     '''
     By Anna Marini
@@ -398,16 +268,11 @@ def update_keyword(header, key, *tup, comment=None):
     return header
 
 
-def new_header():
-    return fits.PrimaryHDU().header
-
 def main():
     '''
     Main function
     '''
     pattern = sys.argv[1:] # File(s). "1:" stands for "From 1 on".
-
-    # dfits ~/desktop/oarpaf/test-sbig-stx/*.fits | fitsort IMAGETYP NAXIS1 DATE-OBS | grep 'Bias' |grep '4096' |grep '2019-11-22' | awk '{print $1}'
 
 
 if __name__ == '__main__':
@@ -421,3 +286,65 @@ if __name__ == '__main__':
         sys.exit()
 
     main()
+
+#### Cemetery of old functions #####
+
+# def new_header():
+#     return fits.PrimaryHDU().header
+
+# def to_list(arg):
+#     if type(arg) is not list: arg = [ arg ]
+#     return arg
+
+# def is_number(s):
+#     '''
+#     Check if a string contains a (float) number.
+#     Useful to test decimal or sexagesimal coordinates.
+#     '''
+#     try:
+#         float(s)
+#         return True
+#     except ValueError:
+#         return False
+
+
+# def to_number(s):
+#     try:
+#         return int(s)
+#     except ValueError:
+#         return float(s)
+
+
+# def get_fits_data_or_header(filename,get):
+#     '''
+#     Return the header or the data of a fits file.
+#     '''
+#     which_hdu = choose_hdu(filename)
+#     with fits.open(filename) as hdul:
+#         if get is 'header':
+#             return hdul[which_hdu].header;
+#         elif get is 'data':
+#             return hdul[which_hdu].data;
+#         else:
+#             return
+
+
+# def get_fits_data2(filename):
+#     '''
+#     Return the data of the fits file.
+#     Alternative method based on fitsio.
+#     '''
+#     which_hdu = choose_hdu(filename)
+#     with fitsio.FITS(filename) as f:
+#         data = f[which_hdu].read()
+#         return data
+
+
+# From nested dict (json) to object
+# class obj(object):
+#     def __init__(self, d):
+#         for a, b in d.items():
+#             if isinstance(b, (list, tuple)):
+#                 setattr(self, a, [obj(x) if isinstance(x, dict) else x for x in b])
+#             else:
+#                 setattr(self, a, obj(b) if isinstance(b, dict) else b)
