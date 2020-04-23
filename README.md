@@ -3,15 +3,15 @@ Data reduction pipeline for OARPAF data and much more
 
     curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer | bash
 
-Add to `~/.basrc`: 
+Add to `~/.bashrc`: 
 
     export PATH="/home/indy/.pyenv/bin:$PATH"                                                                                                                          
     eval "$(pyenv init -)"                                                                                                                                             
     eval "$(pyenv virtualenv-init -)"
    
-Reload `~/.basrc`:
+Reload `~/.bashrc`:
    
-    source ~/.basrc
+    source ~/.bashrc
 
 Install prerequisites (as suggested here: https://github.com/pyenv/pyenv/wiki/common-build-problems)
 
@@ -24,7 +24,7 @@ Install specific Python version
     pyenv install 3.6.8
     pyenv global 3.6.8
 
-Check if alias is ok (if not, reload `~/.basrc` or open new terminal):
+Check if alias is ok (if not, reload `~/.bashrc` or open new terminal):
 
     python --version 
 
