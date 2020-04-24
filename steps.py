@@ -110,7 +110,7 @@ keys =  ['CCDXBIN', 'FILTER']
 pattern = glob.glob("gj3470/*/object/*.fit*", recursive=True)
 master = 1
 
-r.divide(keys, pattern, prod)
+r.divide(keys, pattern, prod, master=master)
 
 
 ####################################

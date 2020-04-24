@@ -164,7 +164,7 @@ def combine(keys, pattern, prod, method='average', normalize=False, fast=True):
 
     print('Getting headers of all files in pattern')
     dlist = dfits(pattern).fitsort(keys)
-    # [ (name1, ('U', 10)), (name2, ('U', 20)), (name3, ('B', 10)) ]
+    # [ (name1, ('U', 10)), (name2, ('U', 20)) ]
 
     for value in dlist.unique_values: # ('U', 10)
         a = Time.now()
@@ -193,10 +193,10 @@ def correct(keys, pattern, prod, master, operation=None, fast=True):
 
     print('Getting headers of all files in pattern')
     dlist = dfits(pattern).fitsort(keys)
+    # [ (name1, ('U', 10)), (name2, ('U', 20)) ]
 
     for value in dlist.unique_values: # ('U', 10)
         a = Time.now()
-
         names = dlist.unique_names_for(value)
 
         for name in names:
@@ -213,7 +213,7 @@ def subtract(keys, pattern, prod, master=None, fast=True):
     '''
     Subtract two images
     '''
-    if not master:
+    if master is None:
         master = 0
     correct(keys, pattern, prod, master, fast=fast)
 
@@ -222,7 +222,7 @@ def divide(keys, pattern, prod, master=None, fast=True):
     '''
     Divide two images
     '''
-    if not master:
+    if master is None:
         master = 1
     correct(keys, pattern, prod, master, operation='flat', fast=fast )
 
