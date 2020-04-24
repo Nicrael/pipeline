@@ -2,58 +2,101 @@
 # -*- coding: utf-8 -*-
 
 # System modules
+
 from astropy.io import fits, ascii
+from astropy.nddata import CCDData
+from astropy.stats import mad_std
+from astropy.stats import sigma_clip
+from astropy.table import Table
 from astropy.time import Time
 import astropy.units as u
-import numpy as np
-from astropy.stats import sigma_clip
-
-from astropy.nddata import CCDData
 import ccdproc as ccdp
-from astropy.stats import mad_std
-from astropy.table import Table
+import fitsio
+import numpy as np
 
-#                  1               2            3                   4                 5           6
-# biases ------> MBIAS
-#        darks - MBIAS ->   darks_debiased
-#                           darks_debiased -> MDARK
-#        flats - MBIAS ->   flats_debiased
-#                           flats_debiased  - MDARK -->  flats_debiased_dedarked
-#                                                        flats_debiased_dedarked -> MFLAT
-#      objects - MBIAS -> objects_debiased
-#                         objects_debiased  - MDARK -> objects_debiased_dedarked
-#                                                      objects_debiased_dedarked  / MFLAT -> objects_reduc
-#
+##########################################################################
 
-def choose_hdu(filename):
+class dfits():
     '''
-    Detect wether the fits file is compressed with
+    dfits | fitsort simple clone.
+    Uses fast fitsio method by default.
+    '''
+    def __init__(self, pattern):
+        self.pattern = pattern
+        self.heads = [ get_fits_header(f, fast=True) for f in pattern ]
+        #self.heads = [ fitsio.read_header(f, choose_hdu2(f)) for f in pattern ]
+
+    def fitsort(self, keys):
+        ph = zip(self.pattern,self.heads)
+        results = [ (p,(tuple(h[k] for k in keys))) for p,h in ph ]
+        self.keys = keys
+        self.names = [ r[0] for r in results ]
+        self.values = [ r[1] for r in results ]
+        self.unique_values = set(self.values)
+        self.data = results
+        return self
+
+    def unique_names_for(self, value):
+        un = [ d[0] for d in self.data if d[1] == value ]
+        return un
+
+    def grep(self, value):
+        gr = [ d for d in self.data if d[1] == value ]
+        return gr
+
+
+##########################################################################
+
+
+def choose_hdu(filename, fast=False):
+    '''
+    Detect whether the fits file is compressed with
     fpack, and choose the right HDU.
+    fast: Alternative mode based on fitsio
     '''
-    finfo = fits.info(filename, output=False) # Returns a list of tuples.
-    finfo_list = [item for item in finfo if 'COMPRESSED_IMAGE' in item]
-    if not finfo_list:
-        return 0 # finfo[0][0] # 0 if not compressed
+    if fast:
+        finfo = fitsio.FITS(filename) # Object
+        finfo_list = [ f.get_extnum() for f in finfo if f.is_compressed() ]
     else:
-        return 1 # finfo_list[0][0] # 1 if compressed
+        finfo = fits.info(filename, output=False) # List of tuples.
+        finfo_list = [ f[0] for f in finfo if 'COMPRESSED_IMAGE' in f ]
+
+    if not finfo_list:
+        return 0 # finfo # 0 if not compressed
+    else:
+        return 1 # finfo_list[0] # 1 if compressed
 
 
-def get_fits_header(filename):
+def get_fits_header(filename, fast=False):
     '''
     Return the header of the fits file.
+    fast uses fitsio.
     '''
-    #return get_fits_data_or_header(filename,'header')
-    which_hdu = choose_hdu(filename)
-    return fits.getheader(filename, which_hdu)
+    which_hdu = choose_hdu(filename, fast=fast)
+    if fast:
+        #header = fitsio.read_header(filename, which_hdu)
+        with fitsio.FITS(filename) as f:
+            header = f[which_hdu].read_header()
+    else:
+        header = fits.getheader(filename, which_hdu)
+    #print(f"Getting header from {filename}")
+    return header
 
 
-def get_fits_data(filename):
+def get_fits_data(filename, fast=False):
     '''
     Return the data of the fits file.
+    If fitsio=True, use fitsio.
     '''
-    #return get_fits_data_or_header(filename,'data')
-    which_hdu = choose_hdu(filename)
-    return fits.getdata(filename, which_hdu)
+    which_hdu = choose_hdu(filename, fast=fast)
+    if fast:
+        #data = fitsio.read(filename, which_hdu)
+        with fitsio.FITS(filename) as f:
+            data = f[which_hdu].read()
+    else:
+        data = fits.getdata(filename, which_hdu)
+    #print(f"Getting data from {filename}")
+    return data
 
 
 def is_keyval_in_header(head, key, val):
@@ -71,7 +114,6 @@ def is_keyval_in_file(filename, key, val):
     return is_keyval_in_header(header, keyword, value)
 
 
-
 def write_fits(data, filename, header=None):
     '''
     Write a fits file.
@@ -86,8 +128,7 @@ def write_fits(data, filename, header=None):
     return hdu
 
 
-
-def oarpaf_mask(data, sigma=3, output_file=None, header=None):
+def mask(data, sigma=3, output_file=None, header=None):
     '''
     Create a bad pixel mask
     '''
@@ -98,7 +139,7 @@ def oarpaf_mask(data, sigma=3, output_file=None, header=None):
     return mask
 
 
-def oarpaf_mask_reg(data, sigma=3, output_file=None):
+def mask_reg(data, sigma=3, output_file=None):
     '''
     Create a bad pixel region table
     '''
@@ -114,74 +155,76 @@ def oarpaf_mask_reg(data, sigma=3, output_file=None):
 
     return table
 
-def subtract(keys, pattern, prod, master=None):
-    '''
-    Subtract two images
-    '''
-    if not master:
-        master = 0
-    correct(keys, pattern, prod, master)
 
-
-def divide(keys, pattern, prod, master=None, operation='flat'):
-    '''
-    Divide two images
-    '''
-    if not master:
-        master = 1
-    correct(keys, pattern, prod, master)
-
-
-def combine(keys, pattern, prod, method='average', normalize=False):
+def combine(keys, pattern, prod, method='average', normalize=False, fast=True):
     '''
     Combine a pattern of images using average (default) or median.
     Loops over a list of keywords. normalize=True to combine flats.
     '''
 
     print('Getting headers of all files in pattern')
-    heads = [ r.get_fits_header(i) for i in pattern ]
-    values = {tuple(h[k] for k in keys) for h in heads}
-    # {('U', 10), ('U', 20), ('B', 10), ('B', 20)
+    dlist = dfits(pattern).fitsort(keys)
+    # [ (name1, ('U', 10)), (name2, ('U', 20)), (name3, ('B', 10)) ]
 
-    for value in values: # ('U', 10)
+    for value in dlist.unique_values: # ('U', 10)
         a = Time.now()
-        # FILTER!!! WOW!
-        names = { p for p,h in zip(pattern,heads) if tuple(h[k] for k in keys) == value }
+        names = dlist.unique_names_for(value)
 
-        datas = [r.get_fits_data(d) for d in names ]
+        datas = np.array([get_fits_data(d, fast=fast) for d in names ])
+
         if normalize:
-            datas = [ d/np.mean(d) for d in data ]
-        combined = np.median(datas, axis=2)
+            datas = np.array([ d/np.mean(d) for d in datas ])
+
+        if method is 'average':
+            combined = np.average(datas, axis=0)
+        else:
+            combined = np.median(datas, axis=0)
+        del datas # saving memory
 
         print(f'{keys} {value} -> {len(names)} elements.')
         print(f'Done in {Time.now().unix - a.unix :.1f}s')
 
 
-def correct(keys, pattern, prod, master, operation=None):
+def correct(keys, pattern, prod, master, operation=None, fast=True):
     '''
     Take a pattern of file names. Correct data against a master.
     Use To subtract or divide.
     '''
 
     print('Getting headers of all files in pattern')
-    heads = [ r.get_fits_header(i) for i in pattern ]
-    values = {tuple(h[k] for k in keys) for h in heads}
-    # {('U', 10), ('U', 20), ('B', 10), ('B', 20)
+    dlist = dfits(pattern).fitsort(keys)
 
-    for value in values: # ('U', 10)
+    for value in dlist.unique_values: # ('U', 10)
         a = Time.now()
-        # FILTER!!! WOW!
-        names = { p for p,h in zip(pattern,heads) if tuple(h[k] for k in keys) == value }
+
+        names = dlist.unique_names_for(value)
 
         for name in names:
             if operation != 'flat':
-                r.get_fits_data(name) - master
+                get_fits_data(name, fast=fast) - master
             else:
-                r.get_fits_data(name) / master
+                get_fits_data(name, fast=fast) / master
 
         print(f'{keys} {value} -> {len(names)} elements.')
         print(f'Done in {Time.now().unix - a.unix :.1f}s')
 
+
+def subtract(keys, pattern, prod, master=None, fast=True):
+    '''
+    Subtract two images
+    '''
+    if not master:
+        master = 0
+    correct(keys, pattern, prod, master, fast=fast)
+
+
+def divide(keys, pattern, prod, master=None, fast=True):
+    '''
+    Divide two images
+    '''
+    if not master:
+        master = 1
+    correct(keys, pattern, prod, master, operation='flat', fast=fast )
 
 
 def ccdproc_mbias(pattern, output_file=None, header=None, method='median'):
@@ -243,183 +286,8 @@ if __name__ == '__main__':
     '''
     import sys
 
-    if len(sys.argv) < 2 :    # C'è anche lo [0] che è il nome del file :)
+    if len(sys.argv) < 2 :    # argv[0] is the filename.
         print("Usage:  "+sys.argv[0]+" <list of FITS files>")
         sys.exit()
 
     main()
-
-#### Cemetery of old functions #####
-
-# def frame_dict(filename, with_data=False):
-#     '''
-#     Create a dictionary related to an observation frame
-#     '''
-#     fd = {
-#         'name' : filename,
-#         'head' : get_fits_header(filename),
-#         'data' : None,
-#         }
-#     if with_data:
-#         fd['data'] = get_fits_data(filename)
-
-#     return fd
-
-
-# class AttrDict(dict):
-#     '''
-#     Create an objects where properties are dict keys.
-#     '''
-#     def __init__(self, *args, **kwargs):
-#         super(AttrDict, self).__init__(*args, **kwargs)
-#         self.__dict__ = self
-
-
-# def join_fits_header(pattern):
-#     '''
-#     Join the header of list of fits files in a list.
-#     '''
-#     heads = np.array([ get_fits_header(f) for f in pattern ])
-#     return heads
-
-
-# def join_fits_data(pattern):
-#     '''
-#     Join the data of a list of fits files in a tuple.
-#     Tuple format is useful for stacking in a data cube.
-#     '''
-#     datas = np.array([ get_fits_data(f) for f in pattern ])
-#     return datas
-
-
-# def stack_fits_data(datas):
-#     '''
-#     Stack a list of fits datas in a data cube.
-#     It is useful to perform pixel-per-pixel operations,
-#     such as an average.
-#     '''
-#     datacube = np.dstack(datas)
-#     return datacube
-
-
-# def median_datacube(datacube):
-#     '''
-#     Make a median of a data cube.
-#     '''
-#     datatype=datacube.dtype
-#     median = np.median(datacube, axis=2)
-#     return median.astype(datatype)
-
-
-# def average_datacube(datacube):
-#     '''
-#     Make an average of a data cube.
-#     '''
-#     datatype=datacube.dtype
-#     average = np.average(datacube, axis=2)
-#     return average.astype(datatype)
-
-
-# def oarpaf_combine(pattern, method='median', output_file=None, header=None):
-#     '''
-#     Custom master bias routine.
-#     Calculates the master bias of a list of of fits files.
-#     Default combining method is median.
-#     No output file is provided by default.
-#     '''
-#     joined_fits = join_fits_data(pattern)
-#     datacube = stack_fits_data(joined_fits)
-#     del joined_fits # saving memory
-#     if method is 'average':
-#         combined_data = average_datacube(datacube)
-#     else:
-#         combined_data = median_datacube(datacube)
-#     del datacube # saving memory
-
-#     header = get_fits_header(pattern[0]) if header else None
-
-#     if output_file:
-#         write_fits(combined_data, output_file, header=header)
-
-#     return combined_data
-
-# def new_header():
-#     return fits.PrimaryHDU().header
-
-# def to_list(arg):
-#     if type(arg) is not list: arg = [ arg ]
-#     return arg
-
-# def is_number(s):
-#     '''
-#     Check if a string contains a (float) number.
-#     Useful to test decimal or sexagesimal coordinates.
-#     '''
-#     try:
-#         float(s)
-#         return True
-#     except ValueError:
-#         return False
-
-
-# def to_number(s):
-#     try:
-#         return int(s)
-#     except ValueError:
-#         return float(s)
-
-
-# def get_fits_data_or_header(filename,get):
-#     '''
-#     Return the header or the data of a fits file.
-#     '''
-#     which_hdu = choose_hdu(filename)
-#     with fits.open(filename) as hdul:
-#         if get is 'header':
-#             return hdul[which_hdu].header;
-#         elif get is 'data':
-#             return hdul[which_hdu].data;
-#         else:
-#             return
-
-
-# def get_fits_data2(filename):
-#     '''
-#     Return the data of the fits file.
-#     Alternative method based on fitsio.
-#     '''
-#     which_hdu = choose_hdu(filename)
-#     with fitsio.FITS(filename) as f:
-#         data = f[which_hdu].read()
-#         return data
-
-
-# From nested dict (json) to object
-# class obj(object):
-#     def __init__(self, d):
-#         for a, b in d.items():
-#             if isinstance(b, (list, tuple)):
-#                 setattr(self, a, [obj(x) if isinstance(x, dict) else x for x in b])
-#             else:
-#                 setattr(self, a, obj(b) if isinstance(b, dict) else b)
-
-
-
-# def frame(filename):
-#     '''
-#     Create a frame object related to an observation frame
-#     '''
-#     fr = AttrDict(frame_dict(filename))
-
-#     return fr
-
-
-# def frame_list(pattern):
-#     '''
-#     Create a list of frames from filename pattern
-#     '''
-#     list1 = []
-#     for filename in pattern:
-#         list1.append(frame(filename))
-
-#     return list1

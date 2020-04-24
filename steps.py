@@ -1,13 +1,13 @@
-
 import glob
 import numpy as np
 from astropy.time import Time
 
 from multiprocessing import Process
 from pathlib import Path
-import itertools
 
 import reduction as r
+
+import dfits
 
 #                  1               2            3                   4                 5           6
 # biases ------> MBIAS
@@ -38,6 +38,7 @@ import reduction as r
 #mask = r.oarpaf_mask(mbias, output_file=mout)
 #reg = r.oarpaf_mask_reg(mask, output_file=f'{prod}-MASK-{keys}{value}.reg')
 
+
 # 111111111111111111111111111111111
 # biases ------> MBIAS
 # Loop over binning
@@ -57,17 +58,16 @@ r.combine(keys, pattern, prod, normalize=False)
 prod = 'debiased'
 keys =  ['CCDXBIN']
 master = 0
+
 pattern = glob.glob("gj3470/*/d*/*.fit*", recursive=True)
-
 r.subtract(keys, pattern, prod, master=None)
-
 pattern = glob.glob("gj3470/*/f*/*.fit*", recursive=True)
-
 r.subtract(keys, pattern, prod, master=None)
-
 pattern = glob.glob("gj3470/*/o*/*.fit*", recursive=True)
-
 r.subtract(keys, pattern, prod, master=None)
+
+# pattern = glob.glob("gj3470/*/[dfo]*/*.fit*", recursive=True)
+# r.subtract(keys, pattern, prod, master=None)
 
 # 3333333333333333333333333333333333
 # darks_debiased -> MDARK
@@ -113,7 +113,6 @@ master = 1
 r.divide(keys, pattern, prod)
 
 
-
 ####################################
 # Main
 ####################################
@@ -129,17 +128,6 @@ def main():
     # dfits ~/desktop/oarpaf/test-sbig-stx/*.fits | fitsort IMAGETYP NAXIS1 DATE-OBS | grep 'Bias' |grep '4096' |grep '2019-11-22' | awk '{print $1}'
 
 
-
-
-    # values1 = ['U', 'B', 'V']
-    # values2 = [1, 2]
-    # list(itertools.product(values1, values2))
-    # [('U', 1), ('U', 2), ('B', 1), ('B', 2), ('V', 1), ('V', 2)]
-
-
-
-
-
 if __name__ == '__main__':
     '''
     If called as a script
@@ -151,71 +139,3 @@ if __name__ == '__main__':
         sys.exit()
 
     main()
-
-
-
-    #     ####################################
-    #     cimitero
-    #     ####################################
-
-# pattern
-# heads = [ get_fits_header(f) for f in pattern ]
-# sub_heads = is_keyval_in_header(heads, 'filter', 'vacio + B3')
-# frames = [ frame(f) for f in pattern if is_keyval_in_file(f, 'filter', 'vacio + B3') ]
-# datas = [ get_fits_data(f) for f in pattern ]
-# ccds =  [ ccdp.CCDData(d, unit='adu') for d in datas ]
-
-# pattern
-# all_frames = frame_list(pattern)
-# frames = [ f for f in all_frames if f.head['filter']  == 'vacio + B3']
-# files = [ f.name for f in frames]
-# heads = [ f.head for f in frames]
-#### datas = [ f.data for f in frames]
-# ccds =  [ ccdp.CCDData(d, unit='adu') for d in datas ]
-# ccds = [ ccdp.CCDData(get_fits_data(f.name), unit='adu') for f in frames ]
-
-#path = Path('/home/dail/first/second/third')
-#path.mkdir(parents=True, exist_ok=True)
-
-# a = [1, 2, 3]
-# b = [4, 5, 6]
-# [list(zip(a, p)) for p in permutations(b)]
-# [[(1, 4), (2, 5), (3, 6)],
-#   [(1, 4), (2, 6), (3, 5)],
-#   [(1, 5), (2, 4), (3, 6)],
-#   [(1, 5), (2, 6), (3, 4)],
-#   [(1, 6), (2, 4), (3, 5)],
-#   [(1, 6), (2, 5), (3, 4)]]
-
-# a = ['U', 'B', 'V']
-# b = [1, 2]
-# list(itertools.product(a, b))
-# [('U', 1), ('U', 2), ('B', 1), ('B', 2), ('V', 1), ('V', 2)]
-
-
-# a = Time.now()
-# b = Time.now()
-# c = b.unix - a.unix
-
-
-    # pattern = glob.glob("gj3470/*/flat/*.fit*", recursive=True)
-    # heads = [ r.get_fits_header(i) for i in pattern ]
-
-    # key = 'FILTER'
-    # values = { h[key] for h in heads } # distinct values
-
-    # for value in values:
-    #     a = Time.now()
-
-    #     names = { p for p,h in zip(pattern, heads) if h[key] == value }
-    #     data = [r.get_fits_data(d) for d in names ]
-
-    #     data_norm = [ d/np.mean(d) for d in data ]
-    #     del data
-    #     dmaster = np.median(data_norm, axis=2)
-    #     del data_norm
-
-    #     print(f'{key} {value} -> {len(names)} elements.')
-    #     print(f'Done in {Time.now().unix - a.unix :.1f}s')
-
-    # print(f'All done in {Time.now().unix - a.unix :.1f}s')
