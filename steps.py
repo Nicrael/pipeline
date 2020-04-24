@@ -38,85 +38,67 @@ import dfits
 #mask = r.oarpaf_mask(mbias, output_file=mout)
 #reg = r.oarpaf_mask_reg(mask, output_file=f'{prod}-MASK-{keys}{value}.reg')
 
+biases = glob.glob("gj3470/*/bias/*.fit*", recursive=True)
+darks = glob.glob("gj3470/*/dark/*.fit*", recursive=True)
+flats = glob.glob("gj3470/*/flat/*.fit*", recursive=True)
+objects = glob.glob("gj3470/*/object/*.fit*", recursive=True)
 
 # 111111111111111111111111111111111
-# biases ------> MBIAS
-# Loop over binning
-
-prod = 'MBIAS'
-keys =  ['CCDXBIN']
-pattern = glob.glob("gj3470/*/bias/*.fit*", recursive=True)
-
-r.combine(keys, pattern, prod, normalize=False)
+keys = ['CCDXBIN']
+r.combine(biases, keys=keys)
+mbias = []
 
 # 2222222222222222222222222222222222
-# darks - MBIAS ->   darks_debiased
-# flats - MBIAS ->   flats_debiased
-# objects - MBIAS -> objects_debiased
-# Loop over binning
-
-prod = 'debiased'
-keys =  ['CCDXBIN']
-master = 0
-
-pattern = glob.glob("gj3470/*/d*/*.fit*", recursive=True)
-r.subtract(keys, pattern, prod, master=None)
-pattern = glob.glob("gj3470/*/f*/*.fit*", recursive=True)
-r.subtract(keys, pattern, prod, master=None)
-pattern = glob.glob("gj3470/*/o*/*.fit*", recursive=True)
-r.subtract(keys, pattern, prod, master=None)
-
-# pattern = glob.glob("gj3470/*/[dfo]*/*.fit*", recursive=True)
-# r.subtract(keys, pattern, prod, master=None)
+r.subtract(darks, mbias, keys=keys)
+r.subtract(flats, mbias, keys=keys)
+r.subtract(objects, mbias, keys=keys)
+darks_debiased = []
+flats_debiased = []
+objects_debiased = []
 
 # 3333333333333333333333333333333333
-# darks_debiased -> MDARK
-# Loop over binning and exptime
-
-prod = 'MDARK'
-keys =  ['CCDXBIN', 'EXPTIME']
-pattern = glob.glob("gj3470/*/dark/*.fit*", recursive=True)
-
-r.combine(keys, pattern, prod, normalize=False)
+keys = ['CCDXBIN','EXPTIME']
+r.combine(darks_debiased, keys=keys)
+mdark = []
 
 # 4444444444444444444444444444444444
-#   flats_debiased  - MDARK -->  flats_debiased_dedarked
-# objects_debiased  - MDARK -> objects_debiased_dedarked
-# Loop over binning and exptime
-
-prod = 'dedarked'
-keys =  ['CCDXBIN', 'EXPTIME']
-pattern = glob.glob("gj3470/*/[fo]*/*.fit*", recursive=True)
-master = 0
-
-r.subtract(keys, pattern, prod, master=master)
+keys = ['CCDXBIN','EXPTIME']
+r.subtract(flats_debiased, mdark, keys=keys)
+r.subtract(objects_debiased, mdark, keys=keys)
+flats_debiased_dedarked = []
+objects_debiased_dedarked = []
 
 # 5555555555555555555555555555555555
-# flats_debiased_dedarked -> MFLAT
-# Loop over binning and filter
-
-prod = 'MFLAT'
-keys =  ['CCDXBIN', 'FILTER']
-pattern = glob.glob("gj3470/*/flat/*.fit*", recursive=True)
-
-r.combine(keys, pattern, prod, normalize=True)
+keys = ['CCDXBIN','EXPTIME']
+r.combine(flats_debiased_dedarked, keys=keys, normalize=True)
+mflat = []
 
 # 6666666666666666666666666666666666
-# objects_debiased_dedarked  / MFLAT -> objects_reduc
-# Loop over binning and filter
+keys = ['CCDXBIN', 'FILTER']
+r.divide(objects_debiased_dedarked, mflat, keys=keys)
 
-prod = 'reduc'
-keys =  ['CCDXBIN', 'FILTER']
-pattern = glob.glob("gj3470/*/object/*.fit*", recursive=True)
-master = 1
+####################################
 
-r.divide(keys, pattern, prod, master=master)
+def single_master(pattern, keys=[], normalize=False):
+    r.combine(pattern, keys=keys, normalize=normalize)
+
+
+def single_reduc(filename, mbias=mbias, mdark=mdark, mflat=mflat, keys=[]):
+    r.subtract(keys, filename, master=mbias)
+    r.subtract(keys, filename_debiased, master=mdark)
+    r.divide(keys, filename_debiased_dedarked, master=mflat)
+
+
+def multiple_reduc(pattern, mbias, mdark, mflat):
+    r.subtract(['CCDXBIN'], pattern, master=mbias)
+    r.subtract(['CCDXBIN', 'EXPTIME'], pattern_debiased, master=mdark)
+    r.divide(['CCDXBIN', 'FILTER'], pattern_debiased_dedarked, master=mflat)
+
 
 
 ####################################
 # Main
 ####################################
-
 
 def main():
     '''

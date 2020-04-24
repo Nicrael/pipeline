@@ -24,7 +24,8 @@ class dfits():
     def __init__(self, pattern):
         self.pattern = pattern
         self.heads = [ get_fits_header(f, fast=True) for f in pattern ]
-        #self.heads = [ fitsio.read_header(f, choose_hdu2(f)) for f in pattern ]
+        self.data = self.heads
+
 
     def fitsort(self, keys):
         ph = zip(self.pattern,self.heads)
@@ -36,17 +37,17 @@ class dfits():
         self.data = results
         return self
 
+
     def unique_names_for(self, value):
         un = [ d[0] for d in self.data if d[1] == value ]
         return un
+
 
     def grep(self, value):
         gr = [ d for d in self.data if d[1] == value ]
         return gr
 
-
 ##########################################################################
-
 
 def choose_hdu(filename, fast=False):
     '''
@@ -114,7 +115,7 @@ def is_keyval_in_file(filename, key, val):
     return is_keyval_in_header(header, keyword, value)
 
 
-def write_fits(data, filename, header=None):
+def write_fits(data, output_file, header=None):
     '''
     Write a fits file.
     It adds a checksum keyword.
@@ -124,7 +125,7 @@ def write_fits(data, filename, header=None):
         hdu = fits.PrimaryHDU(data)
     else:
         hdu = fits.PrimaryHDU(data, header=header)
-    hdu.writeto(filename, overwrite=True, checksum=True)
+    hdu.writeto(output_file, overwrite=True, checksum=True)
     return hdu
 
 
@@ -156,12 +157,12 @@ def mask_reg(data, sigma=3, output_file=None):
     return table
 
 
-def combine(keys, pattern, prod, method='average', normalize=False, fast=True):
+def combine(pattern, keys=[], method='average', normalize=False, fast=True, header=False):
     '''
     Combine a pattern of images using average (default) or median.
     Loops over a list of keywords. normalize=True to combine flats.
     '''
-
+    print(keys)
     print('Getting headers of all files in pattern')
     dlist = dfits(pattern).fitsort(keys)
     # [ (name1, ('U', 10)), (name2, ('U', 20)) ]
@@ -184,8 +185,10 @@ def combine(keys, pattern, prod, method='average', normalize=False, fast=True):
         print(f'{keys} {value} -> {len(names)} elements.')
         print(f'Done in {Time.now().unix - a.unix :.1f}s')
 
+        return combined
 
-def correct(keys, pattern, prod, master, operation=None, fast=True):
+
+def correct(pattern, master, keys=[], operation=None, fast=True, header=None):
     '''
     Take a pattern of file names. Correct data against a master.
     Use To subtract or divide.
@@ -201,33 +204,34 @@ def correct(keys, pattern, prod, master, operation=None, fast=True):
 
         for name in names:
             if operation != 'flat':
-                get_fits_data(name, fast=fast) - master
+                datas = get_fits_data(name, fast=fast) - master
             else:
-                get_fits_data(name, fast=fast) / master
+                datas = get_fits_data(name, fast=fast) / master
+            #yield
 
         print(f'{keys} {value} -> {len(names)} elements.')
         print(f'Done in {Time.now().unix - a.unix :.1f}s')
 
 
-def subtract(keys, pattern, prod, master=None, fast=True):
+def subtract(pattern, master, keys=[], fast=True):
     '''
     Subtract two images
     '''
-    if master is None:
+    if len(master) == 0: # Works for both [] and np.array
         master = 0
-    correct(keys, pattern, prod, master, fast=fast)
+    return correct(pattern, master, keys=keys, fast=fast)
 
 
-def divide(keys, pattern, prod, master=None, fast=True):
+def divide(pattern, master, keys, fast=True):
     '''
     Divide two images
     '''
-    if master is None:
+    if len(master) == 0: # Works for both [] and np.array
         master = 1
-    correct(keys, pattern, prod, master, operation='flat', fast=fast )
+    return correct(pattern, master, keys=keys, fast=fast)
 
 
-def ccdproc_mbias(pattern, output_file=None, header=None, method='median'):
+def ccdproc_mbias(pattern, method='median', output_file=None, header=None):
     '''
     CCDproc-based master bias routine.
     Calculates the master bias of a list of fits data.
