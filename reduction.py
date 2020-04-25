@@ -84,7 +84,7 @@ def get_fits_header(filename, fast=False):
     return header
 
 
-def get_fits_data(filename, fast=False):
+def get_fits_data(filename, fast=True):
     '''
     Return the data of the fits file.
     If fitsio=True, use fitsio.
@@ -157,12 +157,59 @@ def mask_reg(data, sigma=3, output_file=None):
     return table
 
 
-def combine(pattern, keys=[], method='average', normalize=False, fast=True, header=False):
+def combine(datas, normalize=False, method=None,
+            mbias=[], mdark=[], mflat=[], precision='float32'):
+    a = Time.now()
+
+    if len(datas): # Check if datas is not empty
+
+        # Cannot cast type
+        if len(mbias):
+            datas = datas - mbias
+        if len(mdark):
+            datas = datas - mdark
+        if len(mflat):
+            datas = (datas / mflat).astype(precision)
+
+        del mbias, mdark, mflat
+
+        # Did not find a faster method
+        if normalize:
+            bottle = np.zeros(shape=datas.shape).astype(precision)
+            for i, d in enumerate(datas):
+                bottle[i] = d/np.mean(d).astype(precision)
+            datas = bottle
+            del bottle
+
+        datatype = datas.dtype # Don't overshoot
+
+        if method is 'average':
+            combined = np.average(datas, axis=0)
+        elif method is 'median':
+            combined = np.median(datas, axis=0)
+        else: # cube or slice
+            combined = np.squeeze(datas)
+
+        combined = combined.astype(datatype)
+
+        print(f'{method} combined {datas.shape}{datatype} -> {combined.shape}{combined.dtype}')
+
+        del datas # Saving memory
+
+    else: # len(datas) == 0
+        print('Input datas are empty:  Result is input.')
+        combined = datas
+
+    print(f'Done in {Time.now().unix - a.unix :.1f}s')
+    return combined
+
+
+def combine_old(pattern, keys=[], method='average', normalize=False, fast=True, header=False):
     '''
     Combine a pattern of images using average (default) or median.
     Loops over a list of keywords. normalize=True to combine flats.
     '''
-    print(keys)
+
     print('Getting headers of all files in pattern')
     dlist = dfits(pattern).fitsort(keys)
     # [ (name1, ('U', 10)), (name2, ('U', 20)) ]
@@ -172,20 +219,23 @@ def combine(pattern, keys=[], method='average', normalize=False, fast=True, head
         names = dlist.unique_names_for(value)
 
         datas = np.array([get_fits_data(d, fast=fast) for d in names ])
+        datatype = datas.dtype
 
         if normalize:
             datas = np.array([ d/np.mean(d) for d in datas ])
 
         if method is 'average':
-            combined = np.average(datas, axis=0)
+            combined = np.average(datas, axis=0).astype(datatype)
         else:
-            combined = np.median(datas, axis=0)
+            combined = np.median(datas, axis=0).astype(datatype)
         del datas # saving memory
 
         print(f'{keys} {value} -> {len(names)} elements.')
         print(f'Done in {Time.now().unix - a.unix :.1f}s')
 
-        return combined
+        write_fits(combined, 'MBIAS-test.fits')
+
+        #return combined
 
 
 def correct(pattern, master, keys=[], operation=None, fast=True, header=None):

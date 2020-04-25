@@ -2,12 +2,11 @@ import glob
 import numpy as np
 from astropy.time import Time
 
-from multiprocessing import Process
-from pathlib import Path
-
 import reduction as r
 
-import dfits
+# from multiprocessing import Process
+# from pathlib import Path
+# import dfits
 
 #                  1               2            3                   4                 5           6
 # biases ------> MBIAS
@@ -19,6 +18,13 @@ import dfits
 #      objects - MBIAS -> objects_debiased
 #                         objects_debiased  - MDARK -> objects_debiased_dedarked
 #                                                      objects_debiased_dedarked  / MFLAT -> objects_reduc
+#
+
+#                  1               2            3                   4                 5           6
+# biases ------> MBIAS
+#        darks - MBIAS ->   darks_debiased -> MDARK
+#        flats - MBIAS ->   flats_debiased  - MDARK --> flats_debiased_dedarked -> MFLAT
+#      objects - MBIAS -> objects_debiased  - MDARK -> objects_debiased_dedarked / MFLAT -> objects_reduc
 #
 
 # biases, darks, flat
@@ -38,62 +44,39 @@ import dfits
 #mask = r.oarpaf_mask(mbias, output_file=mout)
 #reg = r.oarpaf_mask_reg(mask, output_file=f'{prod}-MASK-{keys}{value}.reg')
 
-biases = glob.glob("gj3470/*/bias/*.fit*", recursive=True)
-darks = glob.glob("gj3470/*/dark/*.fit*", recursive=True)
-flats = glob.glob("gj3470/*/flat/*.fit*", recursive=True)
-objects = glob.glob("gj3470/*/object/*.fit*", recursive=True)
-
-# 111111111111111111111111111111111
+# 1,2
 keys = ['CCDXBIN']
-r.combine(biases, keys=keys)
-mbias = []
-
-# 2222222222222222222222222222222222
-r.subtract(darks, mbias, keys=keys)
-r.subtract(flats, mbias, keys=keys)
-r.subtract(objects, mbias, keys=keys)
-darks_debiased = []
-flats_debiased = []
-objects_debiased = []
-
-# 3333333333333333333333333333333333
+# 3,4,5
 keys = ['CCDXBIN','EXPTIME']
-r.combine(darks_debiased, keys=keys)
-mdark = []
-
-# 4444444444444444444444444444444444
-keys = ['CCDXBIN','EXPTIME']
-r.subtract(flats_debiased, mdark, keys=keys)
-r.subtract(objects_debiased, mdark, keys=keys)
-flats_debiased_dedarked = []
-objects_debiased_dedarked = []
-
-# 5555555555555555555555555555555555
-keys = ['CCDXBIN','EXPTIME']
-r.combine(flats_debiased_dedarked, keys=keys, normalize=True)
-mflat = []
-
-# 6666666666666666666666666666666666
+# 6
 keys = ['CCDXBIN', 'FILTER']
-r.divide(objects_debiased_dedarked, mflat, keys=keys)
 
-####################################
+a = Time.now()
 
-def single_master(pattern, keys=[], normalize=False):
-    r.combine(pattern, keys=keys, normalize=normalize)
+# 1
+biases = glob.glob("gj3470/*/bias/*.fit*", recursive=True)
+bbb = np.array([r.get_fits_data(b) for b in biases])
+mbias = r.combine(bbb, method='median')
 
+# 1,2,3
+darks = glob.glob("gj3470/*/dark/*.fit*", recursive=True)
+ddd = np.array([r.get_fits_data(d) for d in darks]).astype('uint16')
+mdark = r.combine(ddd, mbias=mbias, method='median')
 
-def single_reduc(filename, mbias=mbias, mdark=mdark, mflat=mflat, keys=[]):
-    r.subtract(keys, filename, master=mbias)
-    r.subtract(keys, filename_debiased, master=mdark)
-    r.divide(keys, filename_debiased_dedarked, master=mflat)
+# 1,2,3,4,5
+flats = glob.glob("gj3470/*/flat/*.fit*", recursive=True)
+fff = np.array([r.get_fits_data(f) for f in flats])
+mflat = r.combine(fff, mbias=mbias, mdark=mdark , method='median', normalize=True)
 
+# 1,2,3,4,5,6
+obj_all = glob.glob("gj3470/*/object/*.fit*", recursive=True)
+objects = r.dfits(obj_all).fitsort(['object']).unique_names_for(('GJ3470  ',))
 
-def multiple_reduc(pattern, mbias, mdark, mflat):
-    r.subtract(['CCDXBIN'], pattern, master=mbias)
-    r.subtract(['CCDXBIN', 'EXPTIME'], pattern_debiased, master=mdark)
-    r.divide(['CCDXBIN', 'FILTER'], pattern_debiased_dedarked, master=mflat)
+for o in objects:
+    ooo = r.get_fits_data(o)
+    one = r.combine(ooo, mbias=mbias, mdark=mdark, mflat=mflat)
 
+print(f'Done in {Time.now().unix - a.unix :.1f}s')
 
 
 ####################################

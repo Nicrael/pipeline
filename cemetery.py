@@ -1,9 +1,66 @@
+# !/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 
 
 ####################################
 # Graveyard of dead functions
 ####################################
+
+System modules
+
+import fitsio
+
+def dfits(self, pattern, hdu=0):
+    heads = [ fitsio.read_header(f, hdu) for f in pattern ]
+    return self
+
+def fitsort(self, keys, hdu=0):
+    pattern = self.pattern
+    heads = self.heads
+    sort = [ (p,(tuple(h[k] for k in keys))) for p,h in zip(self.pattern,heads) ]
+    self.keys = keys
+    self.data = sort
+    self.data = sort
+    return self
+
+def grep(self, value):
+    sort = self.sort
+    gr = { s[0] for s in sort if s[1] == value }
+    self.data = gr
+    return self
+
+def unique(self, keys=None):
+    if not keys:
+        keys = self.keys
+    heads = self.heads
+    uns = { tuple(h[k] for k in keys) for h in heads }
+    self.data = uns
+    return self
+
+
+
+    def names(self, keys=None):
+        if not keys:
+            keys = self.keys
+        heads = self.heads
+        uns = { tuple(h[k] for k in keys) for h in heads }
+        self.data = uns
+        return self
+
+    def unique(self, keys=None):
+        if not keys:
+            keys = self.keys
+        heads = self.heads
+        uns = { tuple(h[k] for k in keys) for h in heads }
+        self.data = uns
+        return self
+
+    def grep(self, value):
+        sort = self.data
+        gr = { s[0] for s in sort if s[1] == value }
+        self.data = gr
+        return self
 
 
 def asdasdasd():

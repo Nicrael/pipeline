@@ -1,11 +1,8 @@
+# !/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-import glob
-import numpy as np
-from astropy.time import Time
 from multiprocessing import Process
-from pathlib import Path
-
-import reduction as r
+import numpy as np
 
 
 ####################################
@@ -29,3 +26,19 @@ def go3():
         sleep = 0.1
         Process(target=f, args=(what, sleep) ).start()
         print(f"Started {what}")
+
+
+####################################
+# Generators test
+####################################
+
+
+def many_to_one(inputs):
+    output = np.average([d for d in inputs])
+    return output
+
+def many_to_many(inputs, master):
+
+    for i in inputs:
+        outputs = i - master
+        yield outputs
