@@ -157,17 +157,41 @@ def mask_reg(data, sigma=3, output_file=None):
     return table
 
 
+def generic(pattern, normalize=False, method='median',
+            keys=[], mbias=[], mdark=[], mflat=[]):
+
+    #---files---
+    print(f'fitsort {len(pattern)} files per {keys}')
+    sortlist = dfits(pattern).fitsort(keys)
+
+    for value in sortlist.unique_values :
+        files = sortlist.unique_names_for(value)
+
+        #---datas---
+        print(f'getting {len(files)} files for {value}')
+        datas = np.array([get_fits_data(f) for f in files ])
+        output = combine(datas, mbias=mbias, mdark=mdark, mflat=mflat,
+                         normalize=normalize, method=method)
+
+        #---files---
+        print(f'writing file for {value}')
+        write_fits(output, f'generic{value}.fits')
+
+
 def combine(datas, normalize=False, method=None,
             mbias=[], mdark=[], mflat=[], precision='float32'):
+
     a = Time.now()
 
     if len(datas): # Check if datas is not empty
 
+        #precision = datas.dtype
+
         # Cannot cast type
         if len(mbias):
-            datas = datas - mbias
+            datas = (datas - mbias).astype(precision)
         if len(mdark):
-            datas = datas - mdark
+            datas = (datas - mdark).astype(precision)
         if len(mflat):
             datas = (datas / mflat).astype(precision)
 
@@ -181,8 +205,6 @@ def combine(datas, normalize=False, method=None,
             datas = bottle
             del bottle
 
-        datatype = datas.dtype # Don't overshoot
-
         if method is 'average':
             combined = np.average(datas, axis=0)
         elif method is 'median':
@@ -190,9 +212,9 @@ def combine(datas, normalize=False, method=None,
         else: # cube or slice
             combined = np.squeeze(datas)
 
-        combined = combined.astype(datatype)
+        combined = combined.astype(precision)
 
-        print(f'{method} combined {datas.shape}{datatype} -> {combined.shape}{combined.dtype}')
+        print(f'{method} combined {datas.shape}{datas.dtype} -> {combined.shape}{combined.dtype}')
 
         del datas # Saving memory
 

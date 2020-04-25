@@ -1,8 +1,5 @@
-import glob
-import numpy as np
-from astropy.time import Time
-
-import reduction as r
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # from multiprocessing import Process
 # from pathlib import Path
@@ -41,17 +38,20 @@ import reduction as r
 # shortcuts
 ####################################
 
+import glob
+import numpy as np
+from astropy.time import Time
+
+import reduction as r
+
 #mask = r.oarpaf_mask(mbias, output_file=mout)
 #reg = r.oarpaf_mask_reg(mask, output_file=f'{prod}-MASK-{keys}{value}.reg')
 
-# 1,2
-keys = ['CCDXBIN']
-# 3,4,5
-keys = ['CCDXBIN','EXPTIME']
-# 6
-keys = ['CCDXBIN', 'FILTER']
-
 a = Time.now()
+
+##########################################
+# Data based
+##########################################
 
 # 1
 biases = glob.glob("gj3470/*/bias/*.fit*", recursive=True)
@@ -66,17 +66,28 @@ mdark = r.combine(ddd, mbias=mbias, method='median')
 # 1,2,3,4,5
 flats = glob.glob("gj3470/*/flat/*.fit*", recursive=True)
 fff = np.array([r.get_fits_data(f) for f in flats])
-mflat = r.combine(fff, mbias=mbias, mdark=mdark , method='median', normalize=True)
+mflat = r.combine(fff, mbias=mbias, mdark=mdark, normalize=True, method='median')
 
 # 1,2,3,4,5,6
 obj_all = glob.glob("gj3470/*/object/*.fit*", recursive=True)
 objects = r.dfits(obj_all).fitsort(['object']).unique_names_for(('GJ3470  ',))
-
 for o in objects:
     ooo = r.get_fits_data(o)
     one = r.combine(ooo, mbias=mbias, mdark=mdark, mflat=mflat)
 
 print(f'Done in {Time.now().unix - a.unix :.1f}s')
+
+
+##########################################
+# Filename+Data based
+##########################################
+
+# mbias
+r.generic(biases, keys=['ccdxbin'])
+# mdark
+r.generic(darks, keys=['ccdxbin','exptime'], mbias=mbias)
+# mflat
+r.generic(flats, keys=['ccdxbin','filter'], mbias=mbias, mdark=mdark, normalize=True)
 
 
 ####################################
