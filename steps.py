@@ -42,10 +42,10 @@ import glob
 import numpy as np
 from astropy.time import Time
 
-import reduction as r
+from reduction import *
 
-#mask = r.oarpaf_mask(mbias, output_file=mout)
-#reg = r.oarpaf_mask_reg(mask, output_file=f'{prod}-MASK-{keys}{value}.reg')
+#mask = oarpaf_mask(mbias, output_file=mout)
+#reg = oarpaf_mask_reg(mask, output_file=f'{prod}-MASK-{keys}{value}.reg')
 
 a = Time.now()
 
@@ -53,27 +53,28 @@ a = Time.now()
 # Data based
 ##########################################
 
-# 1
+# MBIAS
 biases = glob.glob("gj3470/*/bias/*.fit*", recursive=True)
-bbb = np.array([r.get_fits_data(b) for b in biases])
-mbias = r.combine(bbb, method='median')
+mbias = combine(biases, method='median')
 
-# 1,2,3
+# MDARK
 darks = glob.glob("gj3470/*/dark/*.fit*", recursive=True)
-ddd = np.array([r.get_fits_data(d) for d in darks]).astype('uint16')
-mdark = r.combine(ddd, mbias=mbias, method='median')
+mdark = combine(darks, mbias=mbias, method='median')
 
-# 1,2,3,4,5
+# MFLAT
 flats = glob.glob("gj3470/*/flat/*.fit*", recursive=True)
-fff = np.array([r.get_fits_data(f) for f in flats])
-mflat = r.combine(fff, mbias=mbias, mdark=mdark, normalize=True, method='median')
+mflat = combine(flats, mbias=mbias, mdark=mdark,
+                normalize=True, method='median')
 
-# 1,2,3,4,5,6
+# CLEAN CUBE
 obj_all = glob.glob("gj3470/*/object/*.fit*", recursive=True)
-objects = r.dfits(obj_all).fitsort(['object']).unique_names_for(('GJ3470  ',))
+objects = dfits(obj_all).fitsort(['object']).unique_names_for(('GJ3470  ',))
+clean_cube = combine(objects, mbias=mbias, mdark=mdark, mflat=mflat,
+                     method='cube')
+
+# CLEAN SLICES
 for o in objects:
-    ooo = r.get_fits_data(o)
-    one = r.combine(ooo, mbias=mbias, mdark=mdark, mflat=mflat)
+    clean_slice = combine(o, mbias=mbias, mdark=mdark, mflat=mflat, method='cube')
 
 print(f'Done in {Time.now().unix - a.unix :.1f}s')
 
@@ -82,12 +83,30 @@ print(f'Done in {Time.now().unix - a.unix :.1f}s')
 # Filename+Data based
 ##########################################
 
-# mbias
-r.generic(biases, keys=['ccdxbin'])
-# mdark
-r.generic(darks, keys=['ccdxbin','exptime'], mbias=mbias)
-# mflat
-r.generic(flats, keys=['ccdxbin','filter'], mbias=mbias, mdark=mdark, normalize=True)
+# MBIAS
+biases = glob.glob("gj3470/*/bias/*.fit*", recursive=True)
+generic(biases, keys=['ccdxbin'], method="median")
+
+# MDARK
+darks = glob.glob("gj3470/*/dark/*.fit*", recursive=True)
+generic(darks, keys=['ccdxbin', 'exptime'], method="median",
+                mbias='MBIAS.fits')
+
+# MFLAT
+flats = glob.glob("gj3470/*/flat/*.fit*", recursive=True)
+generic(flats, keys=['ccdxbin', 'filter'], method="median",
+                mbias='MBIAS.fits', mdark='MDARK.fits', normalize=True)
+
+# CLEAN CUBE
+obj_all = glob.glob("gj3470/*/object/*.fit*", recursive=True)
+objects = dfits(obj_all).fitsort(['object']).unique_names_for(('GJ3470  ',))
+
+generic(objects, ['ccdxbin', 'filter'], method='cube',
+                     mbias='MBIAS.fits', mdark='MDARK.fits', mflat="MFLAT.fits")
+
+# CLEAN SLICES
+generic(objects, ['ccdxbin', 'filter'], method='slice',
+                     mbias='MBIAS.fits', mdark='MDARK.fits', mflat="MFLAT.fits")
 
 
 ####################################

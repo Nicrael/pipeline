@@ -7,8 +7,6 @@
 # Graveyard of dead functions
 ####################################
 
-System modules
-
 import fitsio
 
 def dfits(self, pattern, hdu=0):
@@ -247,6 +245,99 @@ def frame_list(pattern):
 
     return list1
 
+
+def combine_old(pattern, keys=[], method='average', normalize=False, fast=True, header=False):
+    '''
+    Combine a pattern of images using average (default) or median.
+    Loops over a list of keywords. normalize=True to combine flats.
+    '''
+
+    print('Getting headers of all files in pattern')
+    dlist = dfits(pattern).fitsort(keys)
+    # [ (name1, ('U', 10)), (name2, ('U', 20)) ]
+
+    for value in dlist.unique_values: # ('U', 10)
+        a = Time.now()
+        names = dlist.unique_names_for(value)
+
+        datas = np.array([get_fits_data(d, fast=fast) for d in names ])
+        datatype = datas.dtype
+
+        if normalize:
+            datas = np.array([ d/np.mean(d) for d in datas ])
+
+        if method is 'average':
+            combined = np.average(datas, axis=0).astype(datatype)
+        else:
+            combined = np.median(datas, axis=0).astype(datatype)
+        del datas # saving memory
+
+        print(f'{keys} {value} -> {len(names)} elements.')
+        print(f'Done in {Time.now().unix - a.unix :.1f}s')
+
+        write_fits(combined, 'MBIAS-test.fits')
+
+        #return combined
+
+
+def correct(pattern, master, keys=[], operation=None, fast=True, header=None):
+    '''
+    Take a pattern of file names. Correct data against a master.
+    Use To subtract or divide.
+    '''
+
+    print('Getting headers of all files in pattern')
+    dlist = dfits(pattern).fitsort(keys)
+    # [ (name1, ('U', 10)), (name2, ('U', 20)) ]
+
+    for value in dlist.unique_values: # ('U', 10)
+        a = Time.now()
+        names = dlist.unique_names_for(value)
+
+        for name in names:
+            if operation != 'flat':
+                datas = get_fits_data(name, fast=fast) - master
+            else:
+                datas = get_fits_data(name, fast=fast) / master
+            #yield
+
+        print(f'{keys} {value} -> {len(names)} elements.')
+        print(f'Done in {Time.now().unix - a.unix :.1f}s')
+
+
+def subtract(pattern, master, keys=[], fast=True):
+    '''
+    Subtract two images
+    '''
+    if len(master) == 0: # Works for both [] and np.array
+        master = 0
+    return correct(pattern, master, keys=keys, fast=fast)
+
+
+def divide(pattern, master, keys, fast=True):
+    '''
+    Divide two images
+    '''
+    if len(master) == 0: # Works for both [] and np.array
+        master = 1
+    return correct(pattern, master, keys=keys, fast=fast)
+
+
+def ccdproc_mbias(pattern, method='median', output_file=None, header=None):
+
+    joined_fits = [get_fits_data(p) for p in pattern]
+    ccd_data_list = [ccdp.CCDData(d, unit="adu") for d in joined_fits ]
+
+    combined_data = ccdp.combine(ccd_data_list, method=method, unit=u.adu,
+                                 dtype=np.uint16, mem_limit=512e6, #)
+                                 sigma_clip=True)  #, sigma_clip_low_thresh=5, sigma_clip_high_thresh=5,
+                                 #sigma_clip_func=np.ma.median) #, signma_clip_dev_func=mad_std)
+                                 #combined_bias.meta['combined'] = True
+
+    if output_file:
+        combined_bias.write(output_file, header=header, overwrite=True)
+
+    return combined_data
 
 
 # values1 = ['U', 'B', 'V']

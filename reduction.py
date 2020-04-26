@@ -22,6 +22,8 @@ class dfits():
     Uses fast fitsio method by default.
     '''
     def __init__(self, pattern):
+        if isinstance(pattern, str):
+            pattern = [pattern]
         self.pattern = pattern
         self.heads = [ get_fits_header(f, fast=True) for f in pattern ]
         self.data = self.heads
@@ -157,47 +159,78 @@ def mask_reg(data, sigma=3, output_file=None):
     return table
 
 
-def generic(pattern, normalize=False, method='median',
-            keys=[], mbias=[], mdark=[], mflat=[]):
 
-    #---files---
+def generic(pattern, keys=[], normalize=False, method=None,
+            mbias=None, mdark=None, mflat=None, output_file=None):
+
     print(f'fitsort {len(pattern)} files per {keys}')
+
     sortlist = dfits(pattern).fitsort(keys)
 
     for value in sortlist.unique_values :
         files = sortlist.unique_names_for(value)
-
-        #---datas---
         print(f'getting {len(files)} files for {value}')
-        datas = np.array([get_fits_data(f) for f in files ])
-        output = combine(datas, mbias=mbias, mdark=mdark, mflat=mflat,
-                         normalize=normalize, method=method)
 
-        #---files---
-        print(f'writing file for {value}')
-        write_fits(output, f'generic{value}.fits')
+        # Combine (and save) data per data. Does not return
+        if method is "slice" or method is "individual":
+            for i,f in enumerate(files):
+                datas = get_fits_data(f)
+                output = combine(f, normalize=normalize,
+                                 mbias=mbias, mdark=mdark, mflat=mflat)
+
+                outfile =  f'generic{value}{i}.fits' if not output_file else output_file
+                print(outfile)
+                write_fits(output, outfile)
+
+        # Combine and save acting on a data cube
+        else:
+            datas = np.array([get_fits_data(f) for f in files ])
+            output = combine(datas, normalize=normalize, method=method,
+                             mbias=mbias, mdark=mdark, mflat=mflat)
+
+            outfile =  f'generic{value}.fits' if not output_file else output_file
+            print(outfile)
+            write_fits(output, outfile)
+
 
 
 def combine(datas, normalize=False, method=None,
-            mbias=[], mdark=[], mflat=[], precision='float32'):
+            mbias=None, mdark=None, mflat=None, precision='float32'):
 
     a = Time.now()
 
     if len(datas): # Check if datas is not empty
 
-        #precision = datas.dtype
+        # Datas from pattern
+        if isinstance(datas, str):
+            datas = get_fits_data(datas)
+        if isinstance(datas, list) and isinstance(datas[0], str):
+            datas = np.array([get_fits_data(d) for d in datas ])
+
+        # Master datas from filename
+        if isinstance(mbias, str): mbias = get_fits_data(mbias)
+        if isinstance(mdark, str): mdark = get_fits_data(mdark)
+        if isinstance(mflat, str): mflat = get_fits_data(mflat)
+
+        # Collapsing array of cubes (3,30,100,100) -> (90,100,100)
+        if len(datas.shape) > 3 :
+            datas = datas.reshape(-1, *datas.shape[-2:])
 
         # Cannot cast type
-        if len(mbias):
+        if mbias is not None and len(mbias):
             datas = (datas - mbias).astype(precision)
-        if len(mdark):
+        if mdark is not None and len(mdark):
             datas = (datas - mdark).astype(precision)
-        if len(mflat):
+        if mflat is not None and len(mflat):
             datas = (datas / mflat).astype(precision)
+
+        # No need to change precision.
+        if all(m is None for m in [mbias, mdark, mflat]):
+            precision = datas.dtype
 
         del mbias, mdark, mflat
 
-        # Did not find a faster method
+        # Did not find a faster method to save memory.
         if normalize:
             bottle = np.zeros(shape=datas.shape).astype(precision)
             for i, d in enumerate(datas):
@@ -209,7 +242,7 @@ def combine(datas, normalize=False, method=None,
             combined = np.average(datas, axis=0)
         elif method is 'median':
             combined = np.median(datas, axis=0)
-        else: # cube or slice
+        else: # cube or 1-slice cube.
             combined = np.squeeze(datas)
 
         combined = combined.astype(precision)
@@ -220,110 +253,10 @@ def combine(datas, normalize=False, method=None,
 
     else: # len(datas) == 0
         print('Input datas are empty:  Result is input.')
-        combined = datas
+        combined = np.array(datas, dtype=np.uint16)
 
     print(f'Done in {Time.now().unix - a.unix :.1f}s')
     return combined
-
-
-def combine_old(pattern, keys=[], method='average', normalize=False, fast=True, header=False):
-    '''
-    Combine a pattern of images using average (default) or median.
-    Loops over a list of keywords. normalize=True to combine flats.
-    '''
-
-    print('Getting headers of all files in pattern')
-    dlist = dfits(pattern).fitsort(keys)
-    # [ (name1, ('U', 10)), (name2, ('U', 20)) ]
-
-    for value in dlist.unique_values: # ('U', 10)
-        a = Time.now()
-        names = dlist.unique_names_for(value)
-
-        datas = np.array([get_fits_data(d, fast=fast) for d in names ])
-        datatype = datas.dtype
-
-        if normalize:
-            datas = np.array([ d/np.mean(d) for d in datas ])
-
-        if method is 'average':
-            combined = np.average(datas, axis=0).astype(datatype)
-        else:
-            combined = np.median(datas, axis=0).astype(datatype)
-        del datas # saving memory
-
-        print(f'{keys} {value} -> {len(names)} elements.')
-        print(f'Done in {Time.now().unix - a.unix :.1f}s')
-
-        write_fits(combined, 'MBIAS-test.fits')
-
-        #return combined
-
-
-def correct(pattern, master, keys=[], operation=None, fast=True, header=None):
-    '''
-    Take a pattern of file names. Correct data against a master.
-    Use To subtract or divide.
-    '''
-
-    print('Getting headers of all files in pattern')
-    dlist = dfits(pattern).fitsort(keys)
-    # [ (name1, ('U', 10)), (name2, ('U', 20)) ]
-
-    for value in dlist.unique_values: # ('U', 10)
-        a = Time.now()
-        names = dlist.unique_names_for(value)
-
-        for name in names:
-            if operation != 'flat':
-                datas = get_fits_data(name, fast=fast) - master
-            else:
-                datas = get_fits_data(name, fast=fast) / master
-            #yield
-
-        print(f'{keys} {value} -> {len(names)} elements.')
-        print(f'Done in {Time.now().unix - a.unix :.1f}s')
-
-
-def subtract(pattern, master, keys=[], fast=True):
-    '''
-    Subtract two images
-    '''
-    if len(master) == 0: # Works for both [] and np.array
-        master = 0
-    return correct(pattern, master, keys=keys, fast=fast)
-
-
-def divide(pattern, master, keys, fast=True):
-    '''
-    Divide two images
-    '''
-    if len(master) == 0: # Works for both [] and np.array
-        master = 1
-    return correct(pattern, master, keys=keys, fast=fast)
-
-
-def ccdproc_mbias(pattern, method='median', output_file=None, header=None):
-    '''
-    CCDproc-based master bias routine.
-    Calculates the master bias of a list of fits data.
-    Default combining method is median.
-    No output file is provided by default.
-    '''
-
-    joined_fits = [get_fits_data(p) for p in pattern]
-    ccd_data_list = [ccdp.CCDData(d, unit="adu") for d in joined_fits ]
-
-    combined_data = ccdp.combine(ccd_data_list, method=method, unit=u.adu,
-                                 dtype=np.uint16, mem_limit=512e6, #)
-                                 sigma_clip=True)  #, sigma_clip_low_thresh=5, sigma_clip_high_thresh=5,
-                                 #sigma_clip_func=np.ma.median) #, signma_clip_dev_func=mad_std)
-                                 #combined_bias.meta['combined'] = True
-
-    if output_file:
-        combined_bias.write(output_file, header=header, overwrite=True)
-
-    return combined_data
 
 
 def update_keyword(header, key, *tup, comment=None):
