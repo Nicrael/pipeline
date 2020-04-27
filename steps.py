@@ -79,6 +79,7 @@ for o in objects:
 print(f'Done in {Time.now().unix - a.unix :.1f}s')
 
 
+
 ##########################################
 # Filename+Data based
 ##########################################
@@ -109,6 +110,16 @@ generic(objects, ['ccdxbin', 'filter'], method='slice',
                      mbias='MBIAS.fits', mdark='MDARK.fits', mflat="MFLAT.fits")
 
 
+Flat list
+for value in flat_list.unique_values:
+
+    FlatX = unique names for
+    Mflat = Combine
+    Flat list unique values  += (mflat,)
+    Object
+
+    Get header from file 0 :
+
 ####################################
 # Main
 ####################################
@@ -121,6 +132,9 @@ def main():
 
     # dfits ~/desktop/oarpaf/test-sbig-stx/*.fits | fitsort IMAGETYP NAXIS1 DATE-OBS | grep 'Bias' |grep '4096' |grep '2019-11-22' | awk '{print $1}'
     # dfits ~/desktop/oarpaf/test-sbig-stx/*.fits | fitsort IMAGETYP NAXIS1 DATE-OBS | grep 'Bias' |grep '4096' |grep '2019-11-22' | awk '{print $1}'
+
+# 'abc' -> ['abc']
+
 
 
 if __name__ == '__main__':

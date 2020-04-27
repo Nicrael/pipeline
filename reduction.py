@@ -7,7 +7,7 @@ from astropy.io import fits, ascii
 from astropy.nddata import CCDData
 from astropy.stats import mad_std
 from astropy.stats import sigma_clip
-from astropy.table import Table
+from astropy.table import Table, unique
 from astropy.time import Time
 import astropy.units as u
 import ccdproc as ccdp
@@ -15,6 +15,42 @@ import fitsio
 import numpy as np
 
 ##########################################################################
+
+#heads = [ get_fits_header(f, fast=True) for f in pattern ]
+#table = [ dict([ [h["name"],h["value"]] for h in H.records()]) for H in heads ]
+
+class minidb():
+
+    def __init__(self, pattern):
+        if isinstance(pattern, str):
+            pattern = [pattern]
+        self.pattern = pattern
+        self.heads = [ get_fits_header(f, fast=True) for f in pattern ]
+        keys = self.heads[0].keys()
+        values = [ [ h.get(k) for h in self.heads ] for k in keys ]
+        dic = dict(zip(keys, values))
+        dic["ARP FILENAME"] = pattern
+        self.dic = dic
+        self.table = Table(dic)
+        self.data = self.table
+        self.unique = None
+        self.names = None
+
+    def group_by(self, keys):
+        # if isinstance(keys, str):
+        #     keys = [keys]
+        self.data = self.table.group_by(keys)
+        self.keys = keys
+        self.unique = self.data.groups.keys.as_array().tolist()
+        return self
+
+    def show(self, keys):
+        if isinstance(keys, str):
+            keys = [keys]
+        self.names = [ np.array(g[keys]).tolist() for g in self.data.groups]
+        self.data = self.table[keys]
+        return self
+
 
 class dfits():
     '''
@@ -48,6 +84,7 @@ class dfits():
     def grep(self, value):
         gr = [ d for d in self.data if d[1] == value ]
         return gr
+
 
 ##########################################################################
 
@@ -100,6 +137,20 @@ def get_fits_data(filename, fast=True):
         data = fits.getdata(filename, which_hdu)
     #print(f"Getting data from {filename}")
     return data
+
+
+def load(pattern):
+    '''
+    Return the datas of a file pattern.
+    '''
+    if isinstance(pattern, str): pattern = [pattern]
+    datas = np.array([ get_fits_data(f) for f in pattern ])
+
+    # Collapsing array of cubes (3,30,100,100) -> (90,100,100)
+    if len(datas.shape) > 3 :
+        datas = datas.reshape(-1, *datas.shape[-2:])
+
+    return datas.squeeze()
 
 
 def is_keyval_in_header(head, key, val):
@@ -165,13 +216,13 @@ def generic(pattern, keys=[], normalize=False, method=None,
 
     print(f'fitsort {len(pattern)} files per {keys}')
 
-    sortlist = dfits(pattern).fitsort(keys)
+    sortlist = minidb(pattern).group_by(keys)
 
-    for value in sortlist.unique_values :
-        files = sortlist.unique_names_for(value)
+    for value in sortlist.unique :
+        files = sortlist.names_for(value)
         print(f'getting {len(files)} files for {value}')
 
-        # Combine (and save) data per data. Does not return
+        # Combine (and save) data per data.
         if method is "slice" or method is "individual":
             for i,f in enumerate(files):
                 datas = get_fits_data(f)
@@ -193,17 +244,15 @@ def generic(pattern, keys=[], normalize=False, method=None,
             write_fits(output, outfile)
 
 
-
 def combine(datas, normalize=False, method=None,
-            mbias=None, mdark=None, mflat=None, precision='float32'):
+            mbias=None, mdark=None, mflat=None, mask=False):
 
     a = Time.now()
 
     if len(datas): # Check if datas is not empty
 
         # Datas from pattern
-        if isinstance(datas, str):
-            datas = get_fits_data(datas)
+        if isinstance(datas, str): datas = [datas]
         if isinstance(datas, list) and isinstance(datas[0], str):
             datas = np.array([get_fits_data(d) for d in datas ])
 
@@ -212,9 +261,7 @@ def combine(datas, normalize=False, method=None,
         if isinstance(mdark, str): mdark = get_fits_data(mdark)
         if isinstance(mflat, str): mflat = get_fits_data(mflat)
 
-        # Collapsing array of cubes (3,30,100,100) -> (90,100,100)
-        if len(datas.shape) > 3 :
-            datas = datas.reshape(-1, *datas.shape[-2:])
+        precision='float32'
 
         # Cannot cast type
         if mbias is not None and len(mbias):
@@ -223,10 +270,6 @@ def combine(datas, normalize=False, method=None,
             datas = (datas - mdark).astype(precision)
         if mflat is not None and len(mflat):
             datas = (datas / mflat).astype(precision)
-
-        # No need to change precision.
-        if all(m is None for m in [mbias, mdark, mflat]):
-            precision = datas.dtype
 
         del mbias, mdark, mflat
 
@@ -239,15 +282,13 @@ def combine(datas, normalize=False, method=None,
             del bottle
 
         if method is 'average':
-            combined = np.average(datas, axis=0)
+            combined = np.average(datas, axis=0).astype(precision)
         elif method is 'median':
-            combined = np.median(datas, axis=0)
+            combined = np.median(datas, axis=0).astype(precision)
         else: # cube or 1-slice cube.
             combined = np.squeeze(datas)
 
-        combined = combined.astype(precision)
-
-        print(f'{method} combined {datas.shape}{datas.dtype} -> {combined.shape}{combined.dtype}')
+        print(f'{method}: {datas.shape}{datas.dtype} -> {combined.shape}{combined.dtype}')
 
         del datas # Saving memory
 
