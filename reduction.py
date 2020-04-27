@@ -29,27 +29,26 @@ class minidb():
         keys = self.heads[0].keys()
         values = [ [ h.get(k) for h in self.heads ] for k in keys ]
         dic = dict(zip(keys, values))
-        dic["ARP FILENAME"] = pattern
+        dic["ARP FILENAME"] = pattern # adding filename
         self.dic = dic
-        self.table = Table(dic)
+        self.table = Table(dic) # original
         self.data = self.table
         self.unique = None
         self.names = None
 
-    def group_by(self, keys):
+    def unique_for(self, keys):
         # if isinstance(keys, str):
         #     keys = [keys]
         self.data = self.table.group_by(keys)
-        self.keys = keys
         self.unique = self.data.groups.keys.as_array().tolist()
-        return self
+        return self.unique
 
-    def show(self, keys):
+    def names_for(self, keys):
         if isinstance(keys, str):
             keys = [keys]
         self.names = [ np.array(g[keys]).tolist() for g in self.data.groups]
         self.data = self.table[keys]
-        return self
+        return self.names
 
 
 class dfits():
@@ -64,7 +63,6 @@ class dfits():
         self.heads = [ get_fits_header(f, fast=True) for f in pattern ]
         self.data = self.heads
 
-
     def fitsort(self, keys):
         ph = zip(self.pattern,self.heads)
         results = [ (p,(tuple(h[k] for k in keys))) for p,h in ph ]
@@ -75,11 +73,9 @@ class dfits():
         self.data = results
         return self
 
-
     def unique_names_for(self, value):
         un = [ d[0] for d in self.data if d[1] == value ]
         return un
-
 
     def grep(self, value):
         gr = [ d for d in self.data if d[1] == value ]

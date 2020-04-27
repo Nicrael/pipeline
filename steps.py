@@ -110,19 +110,12 @@ generic(objects, ['ccdxbin', 'filter'], method='slice',
                      mbias='MBIAS.fits', mdark='MDARK.fits', mflat="MFLAT.fits")
 
 
-Flat list
-for value in flat_list.unique_values:
-
-    FlatX = unique names for
-    Mflat = Combine
-    Flat list unique values  += (mflat,)
-    Object
-
-    Get header from file 0 :
-
 ####################################
 # Main
 ####################################
+
+
+
 
 def main():
     '''
