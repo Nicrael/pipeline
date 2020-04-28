@@ -85,35 +85,35 @@ def group(table_dict, keys, show=None):
     return res3
 
 
-# class minidb():
+class minidb():
 
-#     def __init__(self, pattern):
-#         if isinstance(pattern, str):
-#             pattern = [pattern]
-#         self.pattern = pattern
-#         self.heads = [ get_fits_header(f, fast=True) for f in pattern ]
-#         keys = self.heads[0].keys()
-#         values = [ [ h.get(k) for h in self.heads ] for k in keys ]
-#         dic = dict(zip(keys, values))
-#         dic["ARP FILENAME"] = pattern # adding filename
-#         self.dic = dic
-#         self.table = Table(dic) # original
-#         self.data = self.table
-#         self.unique = None
-#         self.names = None
+    def __init__(self, pattern):
+        if isinstance(pattern, str):
+            pattern = [pattern]
+        self.pattern = pattern
+        self.heads = [ get_fits_header(f, fast=True) for f in pattern ]
+        keys = self.heads[0].keys()
+        values = [ [ h.get(k) for h in self.heads ] for k in keys ]
+        dic = dict(zip(keys, values))
+        dic["ARP FILENAME"] = pattern # adding filename
+        self.dic = dic
+        self.table = Table(dic) # original
+        self.data = self.table
+        self.unique = None
+        self.names = None
 
-#     def group_by(self, keys):
-#         # if isinstance(keys, str):
-#         #     keys = [keys]
-#         self.data = self.table.group_by(keys)
-#         self.unique = self.data.groups.keys.as_array().tolist()
-#         return self.data.groups
+    def group_by(self, keys):
+        # if isinstance(keys, str):
+        #     keys = [keys]
+        self.data = self.table.group_by(keys)
+        self.unique = self.data.groups.keys.as_array().tolist()
+        return self.data.groups
 
 
-#     def show(self, keys):
-#         self.names = np.array(self.data[keys]).tolist()
-#         #self.data = self.table[keys]
-#         return self.names
+    def show(self, keys):
+        self.names = np.array(self.data[keys]).tolist()
+        #self.data = self.table[keys]
+        return self.names
 
 
 class dfits():

@@ -74,7 +74,7 @@ clean_cube = combine(objects, mbias=mbias, mdark=mdark, mflat=mflat,
 
 # CLEAN SLICES
 for o in objects:
-    clean_slice = combine(o, mbias=mbias, mdark=mdark, mflat=mflat, method='cube')
+    clean_slice = combine(o, mbias=mbias, mdark=mdark, mflat=mflat)
 
 print(f'Done in {Time.now().unix - a.unix :.1f}s')
 

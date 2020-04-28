@@ -20,7 +20,6 @@ import itertools as it
 #heads = [ get_fits_header(f, fast=True) for f in pattern ]
 #table = [ dict([ [h["name"],h["value"]] for h in H.records()]) for H in heads ]
 
-
 ##########################################################################
 
 def choose_hdu(filename, fast=False):
@@ -208,13 +207,21 @@ def combine(datas, normalize=False, method=None,
 
         del mbias, mdark, mflat
 
+        # # Did not find a faster method to save memory.
+        # if normalize:
+        #     bottle = np.zeros(shape=datas.shape).astype(precision)
+        #     for i, d in enumerate(datas):
+        #         bottle[i] = d/np.mean(d).astype(precision)
+        #     datas = bottle
+        #     del bottle
+
         # Did not find a faster method to save memory.
         if normalize:
-            bottle = np.zeros(shape=datas.shape).astype(precision)
+            #bottle = np.zeros(shape=datas.shape).astype(precision)
             for i, d in enumerate(datas):
-                bottle[i] = d/np.mean(d).astype(precision)
-            datas = bottle
-            del bottle
+                datas[i] = d/np.mean(d).astype(precision)
+            #datas = bottle
+            #del bottle
 
         if method is 'average':
             combined = np.average(datas, axis=0).astype(precision)

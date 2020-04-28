@@ -247,8 +247,6 @@ def sethead(head, key, val):
     Out[51]: 'Hello, 123.13'
     '''
 
-    print(key, val)
-
     with open('cerbero-merged-array.json') as jfile:
         head_format = json.load(jfile)# ['primary']
 
@@ -270,7 +268,6 @@ def sethead(head, key, val):
         #     print(f'{key} not in dict')
 
     return head
-
 
 
 def main():
