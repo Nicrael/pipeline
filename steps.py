@@ -110,6 +110,19 @@ generic(objects, ['ccdxbin', 'filter'], method='slice',
                      mbias='MBIAS.fits', mdark='MDARK.fits', mflat="MFLAT.fits")
 
 
+
+
+####################################
+# With mini db table
+####################################
+
+db = table(pattern)
+imagetyps = group(db, ["IMAGETYP", "FILTER"], "FULLPATH")
+
+for s in  imagetyps:
+    print(s, len(imagetyps[s]))
+
+
 ####################################
 # Main
 ####################################

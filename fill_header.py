@@ -7,6 +7,7 @@
 # System modules
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord
 from astropy.coordinates import get_sun, get_moon
+from astropy.io import fits
 from astropy.time import Time
 from astropy.wcs import WCS
 import astropy.units as u
@@ -15,7 +16,6 @@ import json
 
 # Our modules
 import reduction as r
-from sethead import sethead
 
 class observatory():
 
@@ -42,6 +42,9 @@ class observatory():
         self.alt =  kwargs.get('alt', 0)
         self.unit =  kwargs.get('unit', (u.hour, u.deg))
         self.scale =  kwargs.get('scale', 0.5) # in binning 1,
+
+        # No header by default
+        self.head = None
 
     def test(self, filename):
         '''
@@ -218,7 +221,8 @@ class observatory():
         sethead(nh, "moonalt", moon_altaz.alt.deg)
         sethead(nh, "moondist", moon_radec.separation(c).deg)
 
-        sethead(nh, "filename", self.filename.split("/")[-1])
+        if hasattr(self, "_filename"):
+            sethead(nh, "FULLPATH", self.filename) # .split("/")[-1])
 
         # wcs
         #nh.extend(self.w.to_header(), update=True)
@@ -243,26 +247,27 @@ def sethead(head, key, val):
     Out[51]: 'Hello, 123.13'
     '''
 
+    print(key, val)
+
     with open('cerbero-merged-array.json') as jfile:
         head_format = json.load(jfile)# ['primary']
 
-    card = [fits.Card(**c) for c in head_format if key in c['keyword']][0]
-    #form = '' if not card else card[0]["format"]
+        #card = [fits.Card(**c) for c in head_format if key == c['keyword'] ][0]
+        #form = '' if not card else card[0]["format"]
 
-    print(key)
-    if card:
-        if 'd' in card.value:
-            card.value = int(round(float(val)))
-        elif 'f' in card.value:
-            card.value = round(val, [ int(v) for v in card.value if v.isdigit() ][0])
-        else: # 's' in form:
-            card.value = f'{val:{card.value}}'
-    else:
-         print(f'{key} not in dict')
-     #head[key] = value if not card else (value, card[0]["comment"])
-
-    #print(key, val, "→", form, "→", value)
-
+    for h in head_format :
+        if key == h["keyword"]:
+            form = h["value"]
+            if 'd' in form:
+                value = int(round(float(val)))
+            elif 'f' in form:
+                value = round(val, [ int(v) for v in h["value"] if v.isdigit() ][0])
+            else: # 's' in form:
+                value = f'{val:{h["value"]}}'
+            print(key, val, "→", form, "→", value)
+            head[key] = (value, h["comment"])
+        # else:
+        #     print(f'{key} not in dict')
 
     return head
 

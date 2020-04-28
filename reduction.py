@@ -13,73 +13,12 @@ import astropy.units as u
 import ccdproc as ccdp
 import fitsio
 import numpy as np
+import itertools as it
 
 ##########################################################################
 
 #heads = [ get_fits_header(f, fast=True) for f in pattern ]
 #table = [ dict([ [h["name"],h["value"]] for h in H.records()]) for H in heads ]
-
-class minidb():
-
-    def __init__(self, pattern):
-        if isinstance(pattern, str):
-            pattern = [pattern]
-        self.pattern = pattern
-        self.heads = [ get_fits_header(f, fast=True) for f in pattern ]
-        keys = self.heads[0].keys()
-        values = [ [ h.get(k) for h in self.heads ] for k in keys ]
-        dic = dict(zip(keys, values))
-        dic["ARP FILENAME"] = pattern # adding filename
-        self.dic = dic
-        self.table = Table(dic) # original
-        self.data = self.table
-        self.unique = None
-        self.names = None
-
-    def unique_for(self, keys):
-        # if isinstance(keys, str):
-        #     keys = [keys]
-        self.data = self.table.group_by(keys)
-        self.unique = self.data.groups.keys.as_array().tolist()
-        return self.unique
-
-    def names_for(self, keys):
-        if isinstance(keys, str):
-            keys = [keys]
-        self.names = [ np.array(g[keys]).tolist() for g in self.data.groups]
-        self.data = self.table[keys]
-        return self.names
-
-
-class dfits():
-    '''
-    dfits | fitsort simple clone.
-    Uses fast fitsio method by default.
-    '''
-    def __init__(self, pattern):
-        if isinstance(pattern, str):
-            pattern = [pattern]
-        self.pattern = pattern
-        self.heads = [ get_fits_header(f, fast=True) for f in pattern ]
-        self.data = self.heads
-
-    def fitsort(self, keys):
-        ph = zip(self.pattern,self.heads)
-        results = [ (p,(tuple(h[k] for k in keys))) for p,h in ph ]
-        self.keys = keys
-        self.names = [ r[0] for r in results ]
-        self.values = [ r[1] for r in results ]
-        self.unique_values = set(self.values)
-        self.data = results
-        return self
-
-    def unique_names_for(self, value):
-        un = [ d[0] for d in self.data if d[1] == value ]
-        return un
-
-    def grep(self, value):
-        gr = [ d for d in self.data if d[1] == value ]
-        return gr
 
 
 ##########################################################################

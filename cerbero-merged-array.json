@@ -59,6 +59,7 @@
     { "keyword" :  "sundist",           "value" : ".3f",  "comment" : "Sun distance from the target" },
     { "keyword" :  "moonalt",           "value" : ".3f",  "comment" : "Moon alt angle at start" },
     { "keyword" :  "moondist",          "value" : ".3f",  "comment" : "Moon distance from the target" },
+    { "keyword" :  "plate",             "value" : ".2f",  "comment" : "Plate scale" },
 
 
     { "keyword" :  "gen ambi temp",     "value" : "1f",   "comment" : "[deg] Ambient temperature" },
