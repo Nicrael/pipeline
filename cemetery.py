@@ -38,6 +38,69 @@ def unique(self, keys=None):
 
 
 
+def sethead2(head):
+    ''' By Davide Ricci.
+    Add a keyword in the header with comment and format
+    taken from the json config file
+    In [47]: f'Hello, {123.129:.2f}'
+    Out[51]: 'Hello, 123.13'
+    '''
+
+    with open('cerbero-merged-test.json') as jfile:
+        header_dict = json.load(jfile)# ['primary']
+
+    template = fits.Header([tuple(d) for d in header_dict ] )
+
+    diff = fits.HeaderDiff(template, head)
+
+    for c in diff.common_keywords:
+        template[c] = head[c]
+
+    return template
+
+
+
+def sethead3(head):
+    ''' By Davide Ricci.
+    Add a keyword in the header with comment and format
+    taken from the json config file
+    In [47]: f'Hello, {123.129:.2f}'
+    Out[51]: 'Hello, 123.13'
+    '''
+
+    with open('cerbero-merged-dict.json') as jfile:
+        header_dict = json.load(jfile)# ['primary']
+
+    #card = [fits.Card(**c) for c in head_dict if key == c['keyword'] ][0]
+    #form = '' if not card else card[0]["format"]
+
+    for key in head :
+        key =  key.lower()
+        val = head[key]
+        if key in header_dict: # keyword in the dictionary
+            form = header_dict[key][0]  # Format in the dictionary
+            comm =  header_dict[key][1] # Comment in the dictionary
+            if 'd' in form:
+                value = int(round(float(val)))
+            elif 'b' in form:
+                value = bool(val)
+            elif 'f' in form:
+                decimals = [ int(v) for v in form if v.isdigit() ]
+                value = round(val, decimals[0])
+            else: # 's' in form:
+                value = f'{val:{form}}'
+            print(key, val, "→", form, "→", value)
+            head[key] = (value, comm)
+        else:
+            print(f'{key} not in dict')
+            #value = val
+            # comm = head.comments[key]
+
+    return head
+
+
+
+
     def names(self, keys=None):
         if not keys:
             keys = self.keys

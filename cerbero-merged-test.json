@@ -45,8 +45,6 @@
     [ "observer"       ,    "s",      "Name of observer" ],
     [ "origfile"       ,    "30s",    "Original filename as assigned by IWS" ],
     [ "arcfile"        ,    "30s",    "Archive filename" ],
-    [ "comment"        ,    "x",      " " ],
-    [ "history"        ,    "x",      " " ],
 
 
     [ "crval1"         ,    ".6f",    "Coordinate value of ref pixel" ],
@@ -202,6 +200,10 @@
     [ "dpr type prin"  ,    "30s",    "Observation type" ],
     [ "dpr type qual"  ,    "30s",    "Observation type" ],
     [ "dpr tech prin"  ,    "30s",    "Observation type" ],
-    [ "dpr tech qual"  ,    "30s",    "Observation type" ]
+    [ "dpr tech qual"  ,    "30s",    "Observation type" ],
+
+
+    [ "comment"        ,    "x",      " " ],
+    [ "history"        ,    "x",      " " ]
 
 ]

@@ -247,63 +247,9 @@ class observatory():
 
         nh.add_history("Created by "+self.newhead.__qualname__)
 
-        #nh = sethead(nh)
+        nh = sethead(nh)
 
         self.nh = nh
-
-
-def sethead2(head):
-    ''' By Davide Ricci.
-    Add a keyword in the header with comment and format
-    taken from the json config file
-    In [47]: f'Hello, {123.129:.2f}'
-    Out[51]: 'Hello, 123.13'
-    '''
-
-    with open('cerbero-merged-test.json') as jfile:
-        header_dict = json.load(jfile)# ['primary']
-
-    nh = fits.Header([tuple(d) for d in header_dict if d[0] in head ] )
-
-    # for n in nh:
-    #     if n is "HISTORY":
-    #         val = head[n]
-
-    #     value = val
-    #     nh.set(*value)
-    #     print(n, val, "→", "→", value)
-
-
-    for n in nh:
-        form = nh[n]
-        val = head[n]
-        if 'd' in form:
-            value = int(round(float(val)))
-        elif 'f' in form:
-            decimals = [ int(v) for v in form if v.isdigit() ]
-            decimals = [0] if not decimals else decimals
-            value = round(val, decimals[0])
-        elif 'b' in form:
-            value = bool(val)
-        elif 's' in form:
-            value = f'{val:{form}}'
-        elif 'x' in form: ## history or comment
-            value = val
-
-        if n == "COMMENT" or n == "HISTORY":
-            print("→→→→→→→→→→→→→→→→→→→→→→→→")
-            # for v in val:  ## workaround history or comment
-            #      nh.set(*(n, v, )) # RECURSIVE!!! NOOO!
-        else:
-            nh.set(*(n, value, ))
-
-            #print(n, val, "→", form, "→", value)
-
-    diff = fits.HeaderDiff(head, nh)
-    if diff:
-        print(f"Not in dictionary:{diff.diff_keywords}")
-
-    return nh
 
 
 def sethead(head):
@@ -314,35 +260,54 @@ def sethead(head):
     Out[51]: 'Hello, 123.13'
     '''
 
-    with open('cerbero-merged-dict.json') as jfile:
+    with open('cerbero-merged-test.json') as jfile:
         header_dict = json.load(jfile)# ['primary']
 
-    #card = [fits.Card(**c) for c in head_dict if key == c['keyword'] ][0]
-    #form = '' if not card else card[0]["format"]
+    template = fits.Header([tuple(d) for d in header_dict if d[0] in head ] )
 
-    for key in head :
-        key =  key.lower()
-        val = head[key]
-        if key in header_dict: # keyword in the dictionary
-            form = header_dict[key][0]  # Format in the dictionary
-            comm =  header_dict[key][1] # Comment in the dictionary
-            if 'd' in form:
-                value = int(round(float(val)))
-            elif 'b' in form:
-                value = bool(val)
-            elif 'f' in form:
-                decimals = [ int(v) for v in form if v.isdigit() ]
-                value = round(val, decimals[0])
-            else: # 's' in form:
-                value = f'{val:{form}}'
-            print(key, val, "→", form, "→", value)
-            head[key] = (value, comm)
-        else:
-            print(f'{key} not in dict')
-            #value = val
-            # comm = head.comments[key]
+    bastard_keywords = {"COMMENT", "HISTORY"}
 
-    return head
+    for n in template:
+        if n not in bastard_keywords:
+            form = template[n]
+            val = head[n]
+            value = formatter(val, form)
+            template.set(*(n, value, ))
+
+    for bk in bastard_keywords:
+        if bk in template:
+            value = head[bk]
+            for v in value:
+                template.add_history(v)
+
+    diff = fits.HeaderDiff(head, template)
+    if diff:
+        print(f"Not in dictionary:{diff.diff_keywords}")
+
+    return template
+
+
+def formatter(val, form):
+    '''
+    Take a value and format it according to
+    the format string taken by the header dictionary.
+    '''
+
+    if 'd' in form: # integer
+        value = int(round(float(val)))
+    elif 'f' in form: # float
+        decimals = [ int(v) for v in form if v.isdigit() ]
+        decimals = [0] if not decimals else decimals
+        value = round(val, decimals[0])
+    elif 'b' in form: # boolean
+        value = bool(val)
+    elif 's' in form: # string
+        value = f'{val:{form}}'
+    else:# 'x' in form: ## history or comment
+        value = val
+        print(f"Other: {value}")
+    return value
+
 
 
 
