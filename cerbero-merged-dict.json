@@ -2,6 +2,7 @@
 
     "naxis1"             : ["d",    "# of pixels in axis1" ],
     "naxis2"             : ["d",    "# of pixels in axis2" ],
+    "naxis3"             : ["d",    "# of pixels in axis3" ],
 
     "bzero"              : ["f",    "Pixel=fits*BSCALE+BZERO" ],
     "bscale"             : ["f",    "Pixel=fits*BSCALE+BZERO" ],
