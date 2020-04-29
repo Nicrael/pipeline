@@ -64,7 +64,7 @@ class observatory():
     @filename.setter # On new file, update data
     def filename(self, value):
         self._filename = value
-        self.head = r.get_fits_header(value)
+        self.head = r.get_fits_header(value, fast=True)
 
 
     def skycoord(self):
@@ -186,86 +186,91 @@ class observatory():
         c = self.coord
 
         # location
-        sethead(nh, "latitude", c.location.lat.deg)
-        sethead(nh, "longitud", c.location.lon.deg)
-        sethead(nh, "altitude", int(c.location.height.to_value()) )
+        nh["longitud"] = c.location.lon.deg
+        nh["latitude"] = c.location.lat.deg
+        nh["altitude"] = int(c.location.height.to_value())
+
+        # # location (hierarch test)
+        # nh["tel geolon"] = c.location.lon.deg
+        # nh["tel geolat"] = c.location.lat.deg
+        # nh["tel geoelev"] = int(c.location.height.to_value())
 
         # obstime
-        sethead(nh, "mjd-obs", c.obstime.mjd)
-        sethead(nh, "jd", c.obstime.jd)
-        sethead(nh, "date-obs", c.obstime.isot[:-4])
-        sethead(nh, "lst", c.obstime.sidereal_time("mean").hour)
-        sethead(nh, "equinox", c.obstime.jyear)
+        nh["mjd-obs"] = c.obstime.mjd
+        nh["jd"] = c.obstime.jd
+        nh["date-obs"] = c.obstime.isot[:-4]
+        nh["lst"] = c.obstime.sidereal_time("mean").hour
+        nh["equinox"] = c.obstime.jyear
 
         # detector
-        sethead(nh, "plate", self.plate)
+        nh["plate"] = self.plate
 
         # coord
-        #sethead(nh, "ra", c.ra.to_string(unit="hourangle",sep=":"))
-        #sethead(nh, "dec", c.dec.to_string(sep=":"))
-        sethead(nh, "ra", c.ra.deg)
-        sethead(nh, "dec", c.dec.deg)
+        #nh["ra"] = c.ra.to_string(unit="hourangle",sep=":")
+        #nh["dec"] = c.dec.to_string(sep=":")
+        nh["ra"] = c.ra.deg
+        nh["dec"] = c.dec.deg
 
-        sethead(nh, "alt", c.altaz.alt.deg)
-        sethead(nh, "az", c.altaz.az.deg)
-        sethead(nh, "airmass", c.altaz.secz.value)
-        sethead(nh, "zdist", c.altaz.zen.deg)
+        nh["alt"] = c.altaz.alt.deg
+        nh["az"] = c.altaz.az.deg
+        nh["airmass"] = c.altaz.secz.value
+        nh["zdist"] = c.altaz.zen.deg
 
         sun_radec = get_sun(c.obstime)
         sun_altaz = sun_radec.transform_to(c.altaz)
         moon_radec = get_moon(c.obstime)
         moon_altaz = moon_radec.transform_to(c.altaz)
 
-        sethead(nh, "sunalt", sun_altaz.alt.deg)
-        sethead(nh, "sundist", sun_radec.separation(c).deg)
-        sethead(nh, "moonalt", moon_altaz.alt.deg)
-        sethead(nh, "moondist", moon_radec.separation(c).deg)
+        nh["sunalt"] = sun_altaz.alt.deg
+        nh["sundist"] = sun_radec.separation(c).deg
+        nh["moonalt"] = moon_altaz.alt.deg
+        nh["moondist"] = moon_radec.separation(c).deg
+
+        # WCS
+        nh.extend(self.w.to_header(), update=True)
+        # nh.rename_keyword("PC1_1", "CD1_1", force=True)
 
         if hasattr(self, "_filename"):
-            sethead(nh, "FULLPATH", self.filename) # .split("/")[-1])
+            nh["FULLPATH"] = self.filename # .split("/")[-1])
 
-        # wcs
-        #nh.extend(self.w.to_header(), update=True)
+        nh.add_history("Created by "+self.newhead.__qualname__)
 
-        #self.header.extend(w.to_header(), update=True)
-        # self.header.rename_keyword("PC1_1", "CD1_1", force=True)
-
-        nh.add_comment("Created by "+type(self).__name__)
+        nh = sethead(nh)
 
         self.nh = nh
 
 
-def sethead(head, key, val):
+def sethead(head):
     ''' By Davide Ricci.
     Add a keyword in the header with comment and format
     taken from the json config file
-
-    In [30]: 'Hello, {:.2f}'.format(123.129)
-    Out[30]: 'Hello, 123.13'
-
     In [47]: f'Hello, {123.129:.2f}'
     Out[51]: 'Hello, 123.13'
     '''
 
-    with open('cerbero-merged-array.json') as jfile:
-        head_format = json.load(jfile)# ['primary']
+    with open('cerbero-merged-dict.json') as jfile:
+        header_dict = json.load(jfile)# ['primary']
 
-        #card = [fits.Card(**c) for c in head_format if key == c['keyword'] ][0]
-        #form = '' if not card else card[0]["format"]
+    #card = [fits.Card(**c) for c in head_dict if key == c['keyword'] ][0]
+    #form = '' if not card else card[0]["format"]
 
-    for h in head_format :
-        if key == h["keyword"]:
-            form = h["value"]
+    for key in head :
+        key =  key.lower()
+        if key in header_dict: # keyword in the dictionary
+            val = head[key]
+            form = header_dict[key][0]  # Format in the dictionary
+            comm =  header_dict[key][1] # Comment in the dictionary
             if 'd' in form:
                 value = int(round(float(val)))
             elif 'f' in form:
-                value = round(val, [ int(v) for v in h["value"] if v.isdigit() ][0])
+                decimals = [ int(v) for v in form if v.isdigit() ]
+                value = round(val, decimals[0])
             else: # 's' in form:
-                value = f'{val:{h["value"]}}'
+                value = f'{val:{form}}'
             print(key, val, "→", form, "→", value)
-            head[key] = (value, h["comment"])
-        # else:
-        #     print(f'{key} not in dict')
+            head[key] = (value, comm)
+        else:
+            print(f'{key} not in dict')
 
     return head
 

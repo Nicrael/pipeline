@@ -1,5 +1,5 @@
 {
-    
+
     "Mexman" : {
         "lon" : -115.4869,
         "lat" : 31.0292,
@@ -7,7 +7,7 @@
         "obstime" : "JD",
         "ra"      : "RA",
         "dec"     : "DEC",
-        
+
         "exptime" : "EXPTIME",
         "binning" : ["CCDXBIN", "CCDYBIN"],
         "gain"    : 3.82,
@@ -25,10 +25,10 @@
         "dec"     : "DEC",
 
         "exptime" : "EXPTIME",
+        "binning" : null,
         "gain"    : null,
         "ron"     : null,
         "scale"   : 0.39,
-        "binning" : null,
         "comment" : ""
     },
 
@@ -36,17 +36,18 @@
         "lon" : 9.2034,
         "lat" : 44.5911,
         "alt" : 1480,
-        "exptime" : "EXPTIME",
         "obstime" : "JD",
         "ra"      : null,
         "dec"     : null,
+
+        "exptime" : "EXPTIME",
+        "binning" : ["XBINNING", "YBINNING"],
         "gain"    : "EGAIN",
         "ron"     : 11,
         "scale"   : 0.22,
-        "binning" : ["XBINNING", "YBINNING"],
         "comment" : ""
     },
 
     "default": null
-    
+
 }
