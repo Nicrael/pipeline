@@ -28,7 +28,7 @@ class observatory():
         self.ra = kwargs.get('ra', 'RA')
         self.dec = kwargs.get('dec', 'DEC')
         self.obj = kwargs.get('obj', 'OBJECT')
-        self.obstime = kwargs.get('obstime', 'MJD-OBS')
+        self.obstime = kwargs.get('obstime', 'JD')
 
         # Header keywords optional
         self.binning = kwargs.get('binning')
@@ -44,7 +44,11 @@ class observatory():
         self.scale =  kwargs.get('scale', 0.5) # in binning 1,
 
         # No header by default
-        self.head = None
+        self.head = fits.PrimaryHDU().header
+
+        if "JD" not in self.head:
+            self.head['JD'] = Time.now().jd
+
 
     def test(self, filename):
         '''
@@ -180,9 +184,6 @@ class observatory():
         if not hasattr(self, 'coord'):
             self.skycoord()
 
-        if not hasattr(self, 'w'):
-            self.wcs()
-
         c = self.coord
 
         # location
@@ -226,9 +227,11 @@ class observatory():
         nh["moonalt"] = moon_altaz.alt.deg
         nh["moondist"] = moon_radec.separation(c).deg
 
-        # WCS
-        nh.extend(self.w.to_header(), update=True)
-        # nh.rename_keyword("PC1_1", "CD1_1", force=True)
+        if not hasattr(self, 'w'):
+            if "NAXIS1" in self.head:
+                self.head["NAXIS1"]
+                self.wcs()
+                nh.extend(self.w.to_header(), update=True)
 
         if hasattr(self, "_filename"):
             nh["FULLPATH"] = self.filename # .split("/")[-1])
