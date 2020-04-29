@@ -46,6 +46,7 @@ from astropy.time import Time
 from reduction import *
 import naming
 import fill_header
+from sorters import dfits
 
 #mask = oarpaf_mask(mbias, output_file=mout)
 #reg = oarpaf_mask_reg(mask, output_file=f'{prod}-MASK-{keys}{value}.reg')
@@ -119,16 +120,17 @@ generic(objects, ['ccdxbin', 'filter'], method='slice',
 # All together
 ####################################
 
-biases = glob.glob("gj3470/*/bias/*.fit*", recursive=True)
-mbias = combine(biases, method='median')
+obj_all = glob.glob("gj3470/*/object/*.fit*", recursive=True)
+objects = dfits(obj_all).fitsort(['object']).unique_names_for(('GJ3470  ',))
+ooo = combine(objects, method='median')
 o = fill_header.init_observatory("Mexman")
-o.filename = biases[0]
+o.filename = objects[0]
 o.newhead()
 new_header = o.nh
-for b in biases:
-    new_header.add_comment(b)
-name = naming.output_file(product="mbias")
-write_fits(mbias, output_file=name, header=new_header)
+# for b in objects:
+#     new_header.add_comment(b)
+name = naming.output_file(product="object")
+write_fits(ooo, output_file=name, header=new_header)
 
 
 ####################################

@@ -133,7 +133,7 @@ class observatory():
         else:
             bins = [1, 1]
 
-        plate = self.scale * bins[0]
+        plate = (self.scale * bins[0]) / 3600
 
         self.bins = bins
         self.plate = plate
@@ -157,11 +157,12 @@ class observatory():
         angle = 0
         flip = 1
         if 'INSTRUME' in head and head['INSTRUME'] == 'Mexman':
+            log.warning("Found Mexman! Rotating WCS!")
             angle = np.pi/2
             flip = -1
 
-        cd = self.plate*np.array([[np.cos(angle), np.sin(angle)*flip],
-                                  [np.sin(angle), np.cos(angle)]])
+        cd = self.plate*np.array([[np.cos(angle), np.sin(angle)],
+                                  [flip*np.sin(angle), np.cos(angle)]])
 
         w = WCS(head)
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
@@ -219,7 +220,7 @@ class observatory():
         # coord
         #nh["ra"] = c.ra.to_string(unit="hourangle",sep=":")
         #nh["dec"] = c.dec.to_string(sep=":")
-        nh["radecsys"] = c.frame.name
+        nh["radesys"] = c.frame.name.upper()
         nh["ra"] = c.ra.deg
         nh["dec"] = c.dec.deg
 
@@ -239,9 +240,10 @@ class observatory():
         nh["moondist"] = moon_radec.separation(c).deg
 
         if not hasattr(self, 'w'):
-            if "NAXIS1" in nh:
-                self.wcs()
-                nh.extend(self.w.to_header(), update=True)
+            log.warn("calling wcs!!!")
+            #if "NAXIS1" in nh:
+            self.wcs()
+            nh.extend(self.w.to_header(), update=True)
 
         if hasattr(self, "_filename"):
             nh["FULLPATH"] = self.filename # .split("/")[-1])
