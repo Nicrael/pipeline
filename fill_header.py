@@ -192,10 +192,10 @@ class observatory():
         nh["latitude"] = c.location.lat.deg
         nh["altitude"] = int(c.location.height.to_value())
 
-        # location (hierarch test)
-        nh["tel geolon"] = c.location.lon.deg
-        nh["tel geolat"] = c.location.lat.deg
-        nh["tel geoelev"] = int(c.location.height.to_value())
+        # # location (hierarch test)
+        # nh["TEL GEOLON"] = c.location.lon.deg
+        # nh["TEL GEOLAT"] = c.location.lat.deg
+        # nh["TEL GEOELEV"] = int(c.location.height.to_value())
 
         # obstime
         nh["mjd-obs"] = c.obstime.mjd
@@ -247,7 +247,7 @@ class observatory():
 
         nh.add_history("Created by "+self.newhead.__qualname__)
 
-        nh = sethead2(nh)
+        #nh = sethead(nh)
 
         self.nh = nh
 
@@ -265,10 +265,18 @@ def sethead2(head):
 
     nh = fits.Header([tuple(d) for d in header_dict if d[0] in head ] )
 
+    # for n in nh:
+    #     if n is "HISTORY":
+    #         val = head[n]
+
+    #     value = val
+    #     nh.set(*value)
+    #     print(n, val, "→", "→", value)
+
+
     for n in nh:
         form = nh[n]
         val = head[n]
-        #comm = nh.get_comment(n)
         if 'd' in form:
             value = int(round(float(val)))
         elif 'f' in form:
@@ -277,47 +285,64 @@ def sethead2(head):
             value = round(val, decimals[0])
         elif 'b' in form:
             value = bool(val)
-        else: # 's' in form:
+        elif 's' in form:
             value = f'{val:{form}}'
-        #print(n, val, "→", form, "→", value)
-        nh[n] = (value, )
+        elif 'x' in form: ## history or comment
+            value = val
+
+        if n == "COMMENT" or n == "HISTORY":
+            print("→→→→→→→→→→→→→→→→→→→→→→→→")
+            # for v in val:  ## workaround history or comment
+            #      nh.set(*(n, v, )) # RECURSIVE!!! NOOO!
+        else:
+            nh.set(*(n, value, ))
+
+            #print(n, val, "→", form, "→", value)
+
+    diff = fits.HeaderDiff(head, nh)
+    if diff:
+        print(f"Not in dictionary:{diff.diff_keywords}")
 
     return nh
 
 
-# def sethead(head):
-#     ''' By Davide Ricci.
-#     Add a keyword in the header with comment and format
-#     taken from the json config file
-#     In [47]: f'Hello, {123.129:.2f}'
-#     Out[51]: 'Hello, 123.13'
-#     '''
+def sethead(head):
+    ''' By Davide Ricci.
+    Add a keyword in the header with comment and format
+    taken from the json config file
+    In [47]: f'Hello, {123.129:.2f}'
+    Out[51]: 'Hello, 123.13'
+    '''
 
-#     with open('cerbero-merged-dict.json') as jfile:
-#         header_dict = json.load(jfile)# ['primary']
+    with open('cerbero-merged-dict.json') as jfile:
+        header_dict = json.load(jfile)# ['primary']
 
-#     #card = [fits.Card(**c) for c in head_dict if key == c['keyword'] ][0]
-#     #form = '' if not card else card[0]["format"]
+    #card = [fits.Card(**c) for c in head_dict if key == c['keyword'] ][0]
+    #form = '' if not card else card[0]["format"]
 
-#     for key in head :
-#         key =  key.lower()
-#         if key in header_dict: # keyword in the dictionary
-#             val = head[key]
-#             form = header_dict[key][0]  # Format in the dictionary
-#             comm =  header_dict[key][1] # Comment in the dictionary
-#             if 'd' in form:
-#                 value = int(round(float(val)))
-#             elif 'f' in form:
-#                 decimals = [ int(v) for v in form if v.isdigit() ]
-#                 value = round(val, decimals[0])
-#             else: # 's' in form:
-#                 value = f'{val:{form}}'
-#             print(key, val, "→", form, "→", value)
-#             head[key] = (value, comm)
-#         else:
-#             print(f'{key} not in dict')
+    for key in head :
+        key =  key.lower()
+        val = head[key]
+        if key in header_dict: # keyword in the dictionary
+            form = header_dict[key][0]  # Format in the dictionary
+            comm =  header_dict[key][1] # Comment in the dictionary
+            if 'd' in form:
+                value = int(round(float(val)))
+            elif 'b' in form:
+                value = bool(val)
+            elif 'f' in form:
+                decimals = [ int(v) for v in form if v.isdigit() ]
+                value = round(val, decimals[0])
+            else: # 's' in form:
+                value = f'{val:{form}}'
+            print(key, val, "→", form, "→", value)
+            head[key] = (value, comm)
+        else:
+            print(f'{key} not in dict')
+            #value = val
+            # comm = head.comments[key]
 
-#     return head
+    return head
 
 
 

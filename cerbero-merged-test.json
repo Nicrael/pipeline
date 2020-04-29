@@ -2,17 +2,18 @@
     [ "simple"         ,    "b",      "conforms to FITS standard" ],
     [ "bitpix"         ,    "d",      "array data type" ],
     [ "naxis"          ,    "d",      "number of array dimensions" ],
-    [ "pcount"         ,    "d",      "size of special data area" ],
-    [ "gcount"         ,    "d",      "one data group (required keyword)" ],
-    [ "xtension"       ,    "s",      "binary table extension" ],
-    [ "extend"         ,    "b",      " " ],
-    [ "checksum"       ,    "16s",    " hdu checksum updated :TIME" ],
-    [ "datasum"        ,    "10s",    " data unit checksum updated :TIME" ],
-
 
     [ "naxis1"         ,    "d",      "# of pixels in axis1" ],
     [ "naxis2"         ,    "d",      "# of pixels in axis2" ],
     [ "naxis3"         ,    "d",      "# of pixels in axis3" ],
+
+    [ "extend"         ,    "b",      " " ],
+    [ "pcount"         ,    "d",      "size of special data area" ],
+    [ "gcount"         ,    "d",      "one data group (required keyword)" ],
+    [ "xtension"       ,    "s",      "binary table extension" ],
+    [ "checksum"       ,    "16s",    " hdu checksum updated :TIME" ],
+    [ "datasum"        ,    "10s",    " data unit checksum updated :TIME" ],
+
 
     [ "bzero"          ,    "f",      "Pixel=fits*BSCALE+BZERO" ],
     [ "bscale"         ,    "f",      "Pixel=fits*BSCALE+BZERO" ],
@@ -44,6 +45,8 @@
     [ "observer"       ,    "s",      "Name of observer" ],
     [ "origfile"       ,    "30s",    "Original filename as assigned by IWS" ],
     [ "arcfile"        ,    "30s",    "Archive filename" ],
+    [ "comment"        ,    "x",      " " ],
+    [ "history"        ,    "x",      " " ],
 
 
     [ "crval1"         ,    ".6f",    "Coordinate value of ref pixel" ],
@@ -54,10 +57,10 @@
     [ "cd1_2"          ,    ".6f",    "Transformation matrix element" ],
     [ "cd2_1"          ,    ".6f",    "Transformation matrix element" ],
     [ "cd2_2"          ,    ".6f",    "Transformation matrix element" ],
-    [ "ctype1"         ,    ".6s",    "Coordinate system" ],
-    [ "ctype2"         ,    ".6s",    "Coordinate system" ],
-    [ "cunit1"         ,    ".6s",    "Unit of coordinate" ],
-    [ "cunit2"         ,    ".6s",    "Unit of coordinate" ],
+    [ "ctype1"         ,    ".8s",    "Coordinate system" ],
+    [ "ctype2"         ,    ".8s",    "Coordinate system" ],
+    [ "cunit1"         ,    ".8s",    "Unit of coordinate" ],
+    [ "cunit2"         ,    ".8s",    "Unit of coordinate" ],
 
 
     [ "longitud"       ,    ".4f",    "[deg] Tel geographic lon (+=East)" ],
