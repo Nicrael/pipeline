@@ -66,7 +66,7 @@
     [ "altitude"       ,    ".0f",    "[m] Elevation above sea level"],
     [ "alt"            ,    ".3f",    "[deg] Tel ALT angle at start" ],
     [ "az"             ,    ".3f",    "[deg] Tel Azimuth at start" ],
-    [ "ha"             ,    ".3f",    "Hour angle at start" ],
+    [ "ha"             ,    "8s",    "Hour angle at start" ],
     [ "zdist"          ,    ".3f",    "Zenit distance at start of exposure" ],
     [ "sunalt"         ,    ".3f",    "Sun alt angle at start" ],
     [ "sundist"        ,    ".3f",    "Sun distance from the target" ],
@@ -203,7 +203,7 @@
     [ "dpr tech qual"  ,    "30s",    "Observation type" ],
 
 
-    [ "comment"        ,    "x",      " " ],
-    [ "history"        ,    "x",      " " ]
+    [ "comment"        ,    " ",      " " ],
+    [ "history"        ,    " ",      " " ]
 
 ]

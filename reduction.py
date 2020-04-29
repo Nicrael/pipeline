@@ -2,18 +2,14 @@
 # -*- coding: utf-8 -*-
 
 # System modules
-
+from astropy import log
 from astropy.io import fits, ascii
-from astropy.nddata import CCDData
-from astropy.stats import mad_std
 from astropy.stats import sigma_clip
-from astropy.table import Table, unique
+from astropy.table import Table
 from astropy.time import Time
 import astropy.units as u
-import ccdproc as ccdp
 import fitsio
 import numpy as np
-import itertools as it
 
 ##########################################################################
 
@@ -53,7 +49,8 @@ def get_fits_header(filename, fast=False):
             header = f[which_hdu].read_header()
     else:
         header = fits.getheader(filename, which_hdu)
-    #print(f"Getting header from {filename}")
+
+    log.info(f"Getting header from {filename}")
     return header
 
 
@@ -69,7 +66,8 @@ def get_fits_data(filename, fast=True):
             data = f[which_hdu].read()
     else:
         data = fits.getdata(filename, which_hdu)
-    #print(f"Getting data from {filename}")
+
+    log.info(f"Getting data from {filename}")
     return data
 
 
@@ -113,6 +111,8 @@ def write_fits(data, output_file, header=None):
     else:
         hdu = fits.PrimaryHDU(data, header=header)
     hdu.writeto(output_file, overwrite=True, checksum=True)
+
+    log.info(f"Writing fits file to {output_file}")
     return hdu
 
 
@@ -144,17 +144,16 @@ def mask_reg(data, sigma=3, output_file=None):
     return table
 
 
-
 def generic(pattern, keys=[], normalize=False, method=None,
             mbias=None, mdark=None, mflat=None, output_file=None):
 
-    print(f'fitsort {len(pattern)} files per {keys}')
+    log.info(f'fitsort {len(pattern)} files per {keys}')
 
     sortlist = minidb(pattern).group_by(keys)
 
     for value in sortlist.unique :
         files = sortlist.names_for(value)
-        print(f'getting {len(files)} files for {value}')
+        log.info(f'getting {len(files)} files for {value}')
 
         # Combine (and save) data per data.
         if method is "slice" or method is "individual":
@@ -164,7 +163,7 @@ def generic(pattern, keys=[], normalize=False, method=None,
                                  mbias=mbias, mdark=mdark, mflat=mflat)
 
                 outfile =  f'generic{value}{i}.fits' if not output_file else output_file
-                print(outfile)
+
                 write_fits(output, outfile)
 
         # Combine and save acting on a data cube
@@ -174,7 +173,6 @@ def generic(pattern, keys=[], normalize=False, method=None,
                              mbias=mbias, mdark=mdark, mflat=mflat)
 
             outfile =  f'generic{value}.fits' if not output_file else output_file
-            print(outfile)
             write_fits(output, outfile)
 
 
@@ -230,15 +228,15 @@ def combine(datas, normalize=False, method=None,
         else: # cube or 1-slice cube.
             combined = np.squeeze(datas)
 
-        print(f'{method}: {datas.shape}{datas.dtype} -> {combined.shape}{combined.dtype}')
+        log.info(f'{method}: {datas.shape}{datas.dtype} -> {combined.shape}{combined.dtype}')
 
         del datas # Saving memory
 
     else: # len(datas) == 0
-        print('Input datas are empty:  Result is input.')
+        log.warn('Input datas are empty:  Result is input.')
         combined = np.array(datas, dtype=np.uint16)
 
-    print(f'Done in {Time.now().unix - a.unix :.1f}s')
+    log.info(f'Done in {Time.now().unix - a.unix :.1f}s')
     return combined
 
 

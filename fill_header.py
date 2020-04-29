@@ -5,6 +5,7 @@
 # %autoreload 2
 
 # System modules
+from astropy import log
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord
 from astropy.coordinates import get_sun, get_moon
 from astropy.io import fits
@@ -14,15 +15,15 @@ import astropy.units as u
 import numpy as np
 import json
 
+import naming
+
 # Our modules
 import reduction as r
 
 class observatory():
 
     def __init__(self, **kwargs):
-        '''
-        Set default parameters.
-        '''
+        log.info(f"Set default parameters: {kwargs}")
 
         # Header keywords with defaults
         self.ra = kwargs.get('ra', 'RA')
@@ -102,7 +103,7 @@ class observatory():
         elif self.obj in head:
             coord = SkyCoord.from_name(head[self.obj], frame='fk5')
         else:
-            print("No (RA DEC) and no OBJECT in header")
+            log.error("No (RA DEC) and no OBJECT in header")
             return
 
         # Meteo
@@ -200,7 +201,7 @@ class observatory():
         # obstime
         nh["mjd-obs"] = c.obstime.mjd
         nh["jd"] = c.obstime.jd
-        nh["date-obs"] = c.obstime.isot[:-4]
+        nh["date-obs"] = c.obstime.isot #[:-4]
 
         midnight = c.obstime.iso.split()[0]
 
@@ -245,7 +246,7 @@ class observatory():
         if hasattr(self, "_filename"):
             nh["FULLPATH"] = self.filename # .split("/")[-1])
 
-        nh.add_history("Created by "+self.newhead.__qualname__)
+        nh.add_history(naming.hist(__name__))
 
         nh = sethead(nh)
 
@@ -268,6 +269,7 @@ def sethead(head):
     bastard_keywords = {"COMMENT", "HISTORY"}
 
     for n in template:
+        log.info(f"formatting {n}")
         if n not in bastard_keywords:
             form = template[n]
             val = head[n]
@@ -282,7 +284,7 @@ def sethead(head):
 
     diff = fits.HeaderDiff(head, template)
     if diff:
-        print(f"Not in dictionary:{diff.diff_keywords}")
+        log.info(f"Not in dictionary:{diff.diff_keywords}")
 
     return template
 
@@ -292,6 +294,8 @@ def formatter(val, form):
     Take a value and format it according to
     the format string taken by the header dictionary.
     '''
+    log.info(f"formatting {val} to {form}")
+
 
     if 'd' in form: # integer
         value = int(round(float(val)))
@@ -305,9 +309,18 @@ def formatter(val, form):
         value = f'{val:{form}}'
     else:# 'x' in form: ## history or comment
         value = val
-        print(f"Other: {value}")
+        log.info(f"Other: {value}")
     return value
 
+
+def init_observatory(instrument):
+    log.info(f"Init observatory object")
+
+    with open('./instruments.json') as jfile:
+        instruments = json.load(jfile)
+
+    instrument = instruments[instrument]
+    return observatory(**instrument)
 
 
 
@@ -322,7 +335,7 @@ def main():
     instrument = instruments[sys.argv[1]]
     o = observatory(**instrument)
 
-    print(instrument)
+    log.info(f'Loading {instrument}')
 
     pattern = sys.argv[2:]
     for filename in pattern:
@@ -339,7 +352,7 @@ if __name__ == '__main__':
     import sys
 
     if len(sys.argv) < 3 :    # C'è anche lo [0] che è il nome del file :)
-        print("Usage:  "+sys.argv[0]+" <instrument as in json> <list of FITS files>")
+        log.info("Usage:  "+sys.argv[0]+" <instrument as in json> <list of FITS files>")
         sys.exit()
 
     main()

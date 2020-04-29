@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 # System modules
-
-import fitsio
 import numpy as np
 import itertools as it
+
+
 from reduction import get_fits_header
 
 
@@ -32,11 +32,11 @@ def table(pattern, sort_by=None):
         pattern = [pattern]
 
 
-    print("Stacking headers in a table. It can take a while...")
+    log.info(f"Stacking {len(pattern)} in a table. It can take a while...")
     heads = [ get_fits_header(f, fast=True) for f in pattern ]
     tabled_heads = [ dict([ [h["name"],h["value"]] for h in H.records()]) for H in heads ]
 
-    print("Adding a FULLPATH keyword to retrieve the original file path...")
+    log.info("Adding a FULLPATH keyword to retrieve the original file path...")
     full_path = [ {'FULLPATH': f} for f in pattern ]
     tabled_heads = [{**u, **v} for u, v in zip(tabled_heads, full_path)]
 

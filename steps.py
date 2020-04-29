@@ -38,11 +38,14 @@
 # shortcuts
 ####################################
 
+from astropy import log
 import glob
 import numpy as np
 from astropy.time import Time
 
 from reduction import *
+import naming
+import fill_header
 
 #mask = oarpaf_mask(mbias, output_file=mout)
 #reg = oarpaf_mask_reg(mask, output_file=f'{prod}-MASK-{keys}{value}.reg')
@@ -76,7 +79,7 @@ clean_cube = combine(objects, mbias=mbias, mdark=mdark, mflat=mflat,
 for o in objects:
     clean_slice = combine(o, mbias=mbias, mdark=mdark, mflat=mflat)
 
-print(f'Done in {Time.now().unix - a.unix :.1f}s')
+log.info(f'Done in {Time.now().unix - a.unix :.1f}s')
 
 
 
@@ -113,8 +116,25 @@ generic(objects, ['ccdxbin', 'filter'], method='slice',
 
 
 ####################################
+# All together
+####################################
+
+biases = glob.glob("gj3470/*/bias/*.fit*", recursive=True)
+mbias = combine(biases, method='median')
+o = fill_header.init_observatory("Mexman")
+o.filename = biases[0]
+o.newhead()
+new_header = o.nh
+for b in biases:
+    new_header.add_comment(b)
+name = naming.output_file(product="mbias")
+write_fits(mbias, output_file=name, header=new_header)
+
+
+####################################
 # With mini db table
 ####################################
+
 
 db = table(pattern)
 imagetyps = group(db, ["IMAGETYP", "FILTER"], "FULLPATH")
