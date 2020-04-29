@@ -35,6 +35,6 @@ Upgrade pip and ipyhton
     
 Install packages
     
-    pip install --upgrade  astropy numpy scipy matplotlib pyds9 scikit-image astroplan
+    pip install --upgrade  astropy numpy scipy matplotlib pyds9 scikit-image astroplan fitsio ccdproc
     
 
