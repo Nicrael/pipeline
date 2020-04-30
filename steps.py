@@ -122,7 +122,7 @@ generic(objects, ['ccdxbin', 'filter'], method='slice',
 
 obj_all = glob.glob("gj3470/*/object/*.fit*", recursive=True)
 objects = dfits(obj_all).fitsort(['object']).unique_names_for(('GJ3470  ',))
-ooo = combine(objects, method='median')
+ooo = combine(objects[0:10], method='median')
 o = fill_header.init_observatory("Mexman")
 o.filename = objects[0]
 o.newhead()
@@ -148,6 +148,38 @@ for s in  imagetyps:
 ####################################
 # Main
 ####################################
+
+
+from astropy.time import Time
+from astropy import units as u
+from astropy.coordinates import SkyCoord, FK5, ICRS
+
+# FITS
+spm_ra = '8:00:26.29'     # penso il centro del campo, pixel 512
+spm_dec = '+15:20:10.84'  # penso il centro del campo, pixel 516
+# Scala in gradi: 0.000138 gradi per pixel.
+# Il target si trova ai pixel 430, 385
+# Differenza in pixel: -82,-131 → -0.0114,0.0182 gradi
+
+spm_jd = 2458829.827152778
+spm_equinox = 'J2019.9'
+
+spm = SkyCoord(ra=spm_ra,
+               dec=spm_dec,
+               obstime=Time(spm_jd, format="jd"),
+               frame="fk5",
+               equinox=spm_equinox,
+               unit=(u.hourangle, u.deg) )
+
+spm_2000 = spm.transform_to(FK5(equinox="J2000"))
+
+# SIMBAD
+gj = SkyCoord.from_name("GJ3470").fk5
+
+
+
+
+
 
 
 

@@ -7,6 +7,7 @@
 # System modules
 from astropy import log
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord
+from astropy.coordinates import FK5, ICRS
 from astropy.coordinates import get_sun, get_moon
 from astropy.io import fits
 from astropy.time import Time
@@ -92,19 +93,31 @@ class observatory():
         else:
             obstime = Time(timekey)
 
-        obstime.location=location
+        obstime.location = location
 
         # skycoord
         if self.ra in head and self.dec in head:
             coord = SkyCoord(ra=head[self.ra],
                              dec=head[self.dec],
+                             location=location,
+                             obstime=obstime,
+                             #frame='icrs',
                              frame='fk5',
+                             equinox=obstime.jyear_str[:-2],
                              unit=self.unit)
         elif self.obj in head:
-            coord = SkyCoord.from_name(head[self.obj], frame='fk5')
+            coord = SkyCoord.from_name(head[self.obj],
+                                       location=location,
+                                       obstime=obstime,
+                                       #frame='icrs',
+                                       frame='fk5',
+                                       equinox=obstime.jyear_str[:-2])
         else:
             log.error("No (RA DEC) and no OBJECT in header")
             return
+
+        coord = coord.transform_to(FK5(equinox='J2000'))
+
 
         # Meteo
         if self.temperature and self.temperature in head:
@@ -114,8 +127,7 @@ class observatory():
         if self.humidity and self.humidity in head:
             coord.relative_humidity = head[self.humidity]/ 100
 
-        coord.location=location
-        coord.obstime=obstime
+        #coord.obstime=obstime
 
         self.coord = coord
         return coord
@@ -159,10 +171,10 @@ class observatory():
         if 'INSTRUME' in head and head['INSTRUME'] == 'Mexman':
             log.warning("Found Mexman! Rotating WCS!")
             angle = np.pi/2
-            flip = -1
+            flip = 1
 
-        cd = self.plate*np.array([[np.cos(angle), np.sin(angle)],
-                                  [flip*np.sin(angle), np.cos(angle)]])
+        cd = self.plate*np.array([[np.cos(angle), flip*np.sin(angle)],
+                                  [np.sin(angle), np.cos(angle)]])
 
         w = WCS(head)
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
@@ -207,7 +219,9 @@ class observatory():
         midnight = c.obstime.iso.split()[0]
 
         nh["utc"] = c.obstime.unix - Time(midnight).unix
-        nh["lst"] = c.obstime.sidereal_time("mean").hour
+
+        sid = c.obstime.sidereal_time("mean").hour
+        nh["lst"] = sid*u.hour.to(u.s)
 
         nh["equinox"] = c.equinox.jyear # should be 2000 for fk5
 
