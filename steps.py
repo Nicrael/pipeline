@@ -72,7 +72,8 @@ mflat = combine(flats, mbias=mbias, mdark=mdark,
 
 # CLEAN CUBE
 obj_all = glob.glob("gj3470/*/object/*.fit*", recursive=True)
-objects = dfits(obj_all).fitsort(['object']).unique_names_for(('GJ3470  ',))
+objects = dfits(obj_all, fast=True).fitsort(['object']).unique_names_for(('GJ3470  ',))
+
 clean_cube = combine(objects, mbias=mbias, mdark=mdark, mflat=mflat,
                      method='cube')
 
@@ -80,38 +81,70 @@ clean_cube = combine(objects, mbias=mbias, mdark=mdark, mflat=mflat,
 for o in objects:
     clean_slice = combine(o, mbias=mbias, mdark=mdark, mflat=mflat)
 
-log.info(f'Done in {Time.now().unix - a.unix :.1f}s')
-
-
 
 ##########################################
 # Filename+Data based
 ##########################################
 
-# MBIAS
-biases = glob.glob("gj3470/*/bias/*.fit*", recursive=True)
-generic(biases, keys=['ccdxbin'], method="median")
+import glob
+from reduction import master_bias, master_flat, correct_image
+from naming import skeleton
+from sorters import dfits
 
-# MDARK
-darks = glob.glob("gj3470/*/dark/*.fit*", recursive=True)
-generic(darks, keys=['ccdxbin', 'exptime'], method="median",
-                mbias='MBIAS.fits')
+skeleton()
 
-# MFLAT
-flats = glob.glob("gj3470/*/flat/*.fit*", recursive=True)
-generic(flats, keys=['ccdxbin', 'filter'], method="median",
-                mbias='MBIAS.fits', mdark='MDARK.fits', normalize=True)
+biases = glob.glob("gj3470/*/bias/*.fit*")
+keys = ['ccdxbin']
+master_bias(biases, keys)
 
-# CLEAN CUBE
-obj_all = glob.glob("gj3470/*/object/*.fit*", recursive=True)
-objects = dfits(obj_all).fitsort(['object']).unique_names_for(('GJ3470  ',))
+flats = glob.glob("gj3470/*/flat/*.fit*")
+keys = ['ccdxbin', 'filter']
+mbias = 'arp.MBIAS.ccdxbin=2.fits'
+master_flat(flats, keys, mbias=mbias)
 
-generic(objects, ['ccdxbin', 'filter'], method='cube',
-                     mbias='MBIAS.fits', mdark='MDARK.fits', mflat="MFLAT.fits")
+obj_all = glob.glob("gj3470/*/object/*.fit*")
+objects = dfits(obj_all, fast=True).fitsort(['object']).unique_names_for(('GJ3470  ',))
+mflat = "arp.MFLAT.ccdxbin=2.filter=vacio+V3.fits"
+correct_image(objects, keys, mbias=mbias, mflat=mflat)
 
-# CLEAN SLICES
-generic(objects, ['ccdxbin', 'filter'], method='slice',
-                     mbias='MBIAS.fits', mdark='MDARK.fits', mflat="MFLAT.fits")
+solvituri = glob.glob("reduced/*new")
+def solver(solvituri, header=False):
+    import os
+
+    cmd = f'solve-field \
+    {pattern} \
+    --crpix-center \
+    --scale-units arcsecperpix \
+    --scale-low 0.2 \
+    --scale-high 0.6 \
+    --ra 119.7433 \
+    --dec 15.39145 \
+    --radius 0.1 \
+    --downsample 2 \
+    --no-plots \
+    --overwrite'
+
+    os.system(cmd)
+
+
+##########################################
+# Generic2
+##########################################
+
+# INIT
+pattern = glob.glob("gj3470/*/*/*.fit*", recursive=True)
+db = minidb(pattern)
+
+
+keys = ["CCDXBIN"]
+mask = "bias"
+product = "MBIAS"
+combi(db, mask=mask, keys=keys, product=product)
+
+keys = ["CCDXBIN", "FILTER"]
+mask = "flat"
+product = "MFLAT"
+combi(db, mask=mask, keys=keys, product=product, normalize=True)
 
 
 
@@ -122,27 +155,17 @@ generic(objects, ['ccdxbin', 'filter'], method='slice',
 
 obj_all = glob.glob("gj3470/*/object/*.fit*", recursive=True)
 objects = dfits(obj_all).fitsort(['object']).unique_names_for(('GJ3470  ',))
-ooo = combine(objects[0:10], method='median')
+
 o = fill_header.init_observatory("Mexman")
 o.filename = objects[0]
 o.newhead()
 new_header = o.nh
-# for b in objects:
-#     new_header.add_comment(b)
+ooo = combine(objects[0], method='median',
+              mbias="MBIAS.fits.fz", mflat="MFLAT-V.fits.fz"  )
+
 name = naming.output_file(product="object")
 write_fits(ooo, output_file=name, header=new_header)
 
-
-####################################
-# With mini db table
-####################################
-
-
-db = table(pattern)
-imagetyps = group(db, ["IMAGETYP", "FILTER"], "FULLPATH")
-
-for s in  imagetyps:
-    print(s, len(imagetyps[s]))
 
 
 ####################################
@@ -176,10 +199,16 @@ spm_2000 = spm.transform_to(FK5(equinox="J2000"))
 # SIMBAD
 gj = SkyCoord.from_name("GJ3470").fk5
 
+####################################
+# With mini db table
+####################################
 
 
+db = table(pattern)
+imagetyps = group(db, ["IMAGETYP", "FILTER"], "FULLPATH")
 
-
+for s in  imagetyps:
+    print(s, len(imagetyps[s]))
 
 
 

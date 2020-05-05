@@ -7,8 +7,8 @@
 # System modules
 from astropy import log
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord
-from astropy.coordinates import FK5, ICRS
 from astropy.coordinates import get_sun, get_moon
+from astropy.coordinates import FK5
 from astropy.io import fits
 from astropy.time import Time
 from astropy.wcs import WCS
@@ -70,16 +70,16 @@ class observatory():
         self.head = r.get_fits_header(value)
 
     def skycoord(self):
-        head = self.head
+        head = self.head.copy()
+
+        # time
+        if self.obstime not in head:
+            head['JD'] = Time.now().jd
 
         # earthlocation
         location = EarthLocation(lon=self.lon,
                                  lat=self.lat,
                                  height=self.alt)
-
-        # time
-        if self.obstime not in self.head:
-            self.head['JD'] = Time.now().jd
 
         timekey = head[self.obstime]
         if 'MJD' in self.obstime:
@@ -105,6 +105,7 @@ class observatory():
                              frame='fk5',
                              equinox=obstime.jyear_str[:-2],
                              unit=self.unit)
+
         elif self.obj in head:
             coord = SkyCoord.from_name(head[self.obj],
                                        location=location,
@@ -112,6 +113,7 @@ class observatory():
                                        #frame='icrs',
                                        frame='fk5',
                                        equinox=obstime.jyear_str[:-2])
+
         else:
             log.error("No (RA DEC) and no OBJECT in header")
             return
@@ -137,7 +139,7 @@ class observatory():
         '''
         Manage keywords related to the detector.
         '''
-        head = self.head
+        head = self.head.copy()
 
         if self.binning and self.binning[0] in head:
             bins = [head[self.binning[0]],
@@ -145,7 +147,7 @@ class observatory():
         else:
             bins = [1, 1]
 
-        plate = (self.scale * bins[0]) / 3600
+        plate = (self.scale * bins[0])*u.arcsec.to(u.deg)
 
         self.bins = bins
         self.plate = plate
@@ -158,7 +160,7 @@ class observatory():
         files to sky coordinates. It uses the rotational matrix
         obtained in previous function (which_instrument)
         '''
-        head = self.head
+        head = self.head.copy()
 
         if not hasattr(self, 'coord'):
             self.skycoord()
@@ -177,12 +179,12 @@ class observatory():
                                   [np.sin(angle), np.cos(angle)]])
 
         w = WCS(head)
-        w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+        w.wcs.ctype = ["RA---TAN-SIP", "DEC--TAN-SIP"]
         w.wcs.cd = cd
         w.wcs.crval = [self.coord.ra.deg,
                        self.coord.dec.deg]
-        w.wcs.crpix = [head['NAXIS1']/2,
-                       head['NAXIS2']/2]
+        w.wcs.crpix = [(head['NAXIS1']+1)/2,
+                       (head['NAXIS2']+1)/2]
 
         # For other methods
         self.w = w
@@ -191,7 +193,7 @@ class observatory():
 
     def newhead(self):
 
-        nh = self.head
+        nh = self.head.copy()
 
         if not hasattr(self, 'plate'):
             self.detector()
@@ -213,15 +215,14 @@ class observatory():
 
         # obstime
         nh["mjd-obs"] = c.obstime.mjd
-        nh["jd"] = c.obstime.jd
+        #nh["jd"] = c.obstime.jd
         nh["date-obs"] = c.obstime.isot #[:-4]
 
         midnight = c.obstime.iso.split()[0]
-
         nh["utc"] = c.obstime.unix - Time(midnight).unix
 
-        sid = c.obstime.sidereal_time("mean").hour
-        nh["lst"] = sid*u.hour.to(u.s)
+        #sid = c.obstime.sidereal_time("mean").hour # MUST NOT BE J2000
+        #nh["lst"] = sid*u.hour.to(u.s)
 
         nh["equinox"] = c.equinox.jyear # should be 2000 for fk5
 
@@ -237,6 +238,7 @@ class observatory():
         nh["radesys"] = c.frame.name.upper()
         nh["ra"] = c.ra.deg
         nh["dec"] = c.dec.deg
+        #nh["ha"] = sid - c.ra # MUST NOT BE IN J2000
 
         nh["alt"] = c.altaz.alt.deg
         nh["az"] = c.altaz.az.deg
@@ -285,7 +287,7 @@ def sethead(head):
     bastard_keywords = {"COMMENT", "HISTORY"}
 
     for n in template:
-        log.info(f"formatting {n}")
+        #log.info(f"formatting {n}")
         if n not in bastard_keywords:
             form = template[n]
             val = head[n]
@@ -300,7 +302,7 @@ def sethead(head):
 
     diff = fits.HeaderDiff(head, template)
     if diff:
-        log.info(f"Not in dictionary:{diff.diff_keywords}")
+        log.warn(f"Not in dictionary:{diff.diff_keywords}")
 
     return template
 
@@ -310,7 +312,7 @@ def formatter(val, form):
     Take a value and format it according to
     the format string taken by the header dictionary.
     '''
-    log.info(f"formatting {val} to {form}")
+    #log.info(f"formatting {val} to {form}")
 
 
     if 'd' in form: # integer
@@ -325,12 +327,12 @@ def formatter(val, form):
         value = f'{val:{form}}'
     else:# 'x' in form: ## history or comment
         value = val
-        log.info(f"Other: {value}")
+        #log.info(f"Other: {value}")
     return value
 
 
 def init_observatory(instrument):
-    log.info(f"Init observatory object")
+    log.info(f'Loading {instrument}')
 
     with open('./instruments.json') as jfile:
         instruments = json.load(jfile)
@@ -339,19 +341,12 @@ def init_observatory(instrument):
     return observatory(**instrument)
 
 
-
 def main():
     '''
     Main function
     '''
 
-    with open('./instruments.json') as jfile:
-        instruments = json.load(jfile)
-
-    instrument = instruments[sys.argv[1]]
-    o = observatory(**instrument)
-
-    log.info(f'Loading {instrument}')
+    o = init_observatory(sys.argv[1])
 
     pattern = sys.argv[2:]
     for filename in pattern:

@@ -7,6 +7,30 @@
 # Graveyard of dead functions
 ####################################
 
+def generic2(db, product=None, keys=None, mask=None,
+             mbias=None, normalize=False):
+
+    tab = db.table
+    head = db.heads[0]
+    if mask:
+        the_mask = [mask in tt for tt in tab['FULLPATH'] ]
+        tab = tab[the_mask]
+    if keys:
+        tab = tab.group_by(keys)
+
+    for g in tab.groups: # in questo caso solo uno
+        #print(g)
+        files = list(g["FULLPATH"])
+        master = combine(files, method='median', mbias=mbias,
+                         normalize=normalize)
+        #message = hist(__name__, f"Combining: {files}")
+        #head["HISTORY"] = message
+        text = dict(zip(keys, list(g[keys][0]))) if keys else None
+        out = output_file(product=product, text=text)
+        write_fits(data=master, output_file=out, header=head, fast=True)
+
+
+
 import fitsio
 
 def dfits(self, pattern, hdu=0):

@@ -11,10 +11,8 @@ import astropy.units as u
 import fitsio
 import numpy as np
 
-##########################################################################
-
-#heads = [ get_fits_header(f, fast=True) for f in pattern ]
-#table = [ dict([ [h["name"],h["value"]] for h in H.records()]) for H in heads ]
+from sorters import minidb, dfits
+from naming import output_file, hist
 
 ##########################################################################
 
@@ -50,7 +48,7 @@ def get_fits_header(filename, fast=False):
     else:
         header = fits.getheader(filename, which_hdu)
 
-    log.info(f"Getting header from {filename}")
+    log.debug(f"Getting header from {filename}")
     return header
 
 
@@ -67,7 +65,7 @@ def get_fits_data(filename, fast=True):
     else:
         data = fits.getdata(filename, which_hdu)
 
-    log.info(f"Getting data from {filename}")
+    log.debug(f"Getting data from {filename}")
     return data
 
 
@@ -100,17 +98,25 @@ def is_keyval_in_file(filename, key, val):
     return is_keyval_in_header(header, keyword, value)
 
 
-def write_fits(data, output_file, header=None):
+def write_fits(data, output_file, header=None, fast=False):
     '''
     Write a fits file.
     It adds a checksum keyword.
     '''
 
-    if header is None:
-        hdu = fits.PrimaryHDU(data)
+    if fast:
+        hdu = fitsio.FITS(output_file,'rw')
+        if header:
+            hdu.write(data=data, header=header)
+        else:
+            hdu.write(data=data)
+        hdu.close()
     else:
-        hdu = fits.PrimaryHDU(data, header=header)
-    hdu.writeto(output_file, overwrite=True, checksum=True)
+        if header:
+            hdu = fits.PrimaryHDU(data, header=header)
+        else:
+            hdu = fits.PrimaryHDU(data)
+        hdu.writeto(output_file, overwrite=True, checksum=True)
 
     log.info(f"Writing fits file to {output_file}")
     return hdu
@@ -144,15 +150,28 @@ def mask_reg(data, sigma=3, output_file=None):
     return table
 
 
+def master_bias(pattern, keys):
+    generic(pattern, keys=keys, method="median", product="MBIAS")
+
+def master_flat(pattern, keys, mbias):
+    generic(pattern, keys=keys, method="median", product="MFLAT",
+            mbias=mbias, normalize=True)
+
+def correct_image(pattern, keys, mbias, mflat, method='slice'):
+    generic(pattern, keys, method=method, product="CLEAN",
+            mbias=mbias, mflat=mflat)
+
 def generic(pattern, keys=[], normalize=False, method=None,
-            mbias=None, mdark=None, mflat=None, output_file=None):
+            mbias=None, mdark=None, mflat=None, product=None):
 
     log.info(f'fitsort {len(pattern)} files per {keys}')
 
-    sortlist = minidb(pattern).group_by(keys)
+    df = dfits(pattern)
+    sortlist = df.fitsort(keys)
+    heads = df.heads
 
-    for value in sortlist.unique :
-        files = sortlist.names_for(value)
+    for value in sortlist.unique_values :
+        files = sortlist.unique_names_for(value)
         log.info(f'getting {len(files)} files for {value}')
 
         # Combine (and save) data per data.
@@ -162,18 +181,24 @@ def generic(pattern, keys=[], normalize=False, method=None,
                 output = combine(f, normalize=normalize,
                                  mbias=mbias, mdark=mdark, mflat=mflat)
 
-                outfile =  f'generic{value}{i}.fits' if not output_file else output_file
-
-                write_fits(output, outfile)
+                closing(heads, keys, value, product, output, counter=i)
 
         # Combine and save acting on a data cube
         else:
-            datas = np.array([get_fits_data(f) for f in files ])
+            datas = np.array([ get_fits_data(f) for f in files ])
             output = combine(datas, normalize=normalize, method=method,
                              mbias=mbias, mdark=mdark, mflat=mflat)
 
-            outfile =  f'generic{value}.fits' if not output_file else output_file
-            write_fits(output, outfile)
+            closing(heads, keys, value, product, output)
+
+
+def closing(heads, keys, value, product, output, counter=False):
+
+    header = heads[0].copy() # TODO choose head per head
+    header.add_history(hist())
+    text = dict(zip(keys, value)) if keys else None
+    outfile =  output_file(product=product, text=text, counter=counter)
+    write_fits(output, outfile, header=header, fast=False)
 
 
 def combine(datas, normalize=False, method=None,
@@ -205,21 +230,17 @@ def combine(datas, normalize=False, method=None,
 
         del mbias, mdark, mflat
 
-        # # Did not find a faster method to save memory.
-        # if normalize:
-        #     bottle = np.zeros(shape=datas.shape).astype(precision)
-        #     for i, d in enumerate(datas):
-        #         bottle[i] = d/np.mean(d).astype(precision)
-        #     datas = bottle
-        #     del bottle
-
         # Did not find a faster method to save memory.
         if normalize:
-            #bottle = np.zeros(shape=datas.shape).astype(precision)
+            bottle = np.zeros(shape=datas.shape).astype(precision)
             for i, d in enumerate(datas):
-                datas[i] = d/np.mean(d).astype(precision)
-            #datas = bottle
-            #del bottle
+                bottle[i] = d/np.mean(d).astype(precision)
+            datas = bottle
+            del bottle
+
+        # if normalize:
+        #     for i, d in enumerate(datas):
+        #         datas[i] = (d/np.mean(d)).astype(precision)
 
         if method is 'average':
             combined = np.average(datas, axis=0).astype(precision)
@@ -261,6 +282,28 @@ def update_keyword(header, key, *tup, comment=None):
     header.add_history(hist)
 
     return header
+
+
+
+def detect_sources(pattern):
+    ''' By Anna Marini
+    Extract the light sources from the image
+    '''
+    rot = rotate_img(pattern)
+    threshold = detect_threshold(rot, nsigma=2.)
+    sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
+    kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+    kernel.normalize()
+    mean, median, std = sigma_clipped_stats(rot, sigma=3)
+    daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
+    sources = daofind(rot - median)
+    for col in sources.colnames:
+        sources[col].info.format = '%.8g'  # for consistent table output
+   # Pixel coordinates of the sources
+    d = dict();
+    d['x1'] = np.array(sources['xcentroid'])
+    d['y1'] = np.array(sources['ycentroid'])
+    return(d)
 
 
 def main():

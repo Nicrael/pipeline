@@ -5,7 +5,8 @@
 import numpy as np
 import itertools as it
 
-
+from astropy import log
+from astropy.table import Table
 from reduction import get_fits_header
 
 
@@ -21,7 +22,7 @@ def sort(dict_list, keys):
     return dict_list
 
 
-def table(pattern, sort_by=None):
+def make_table(pattern, sort_by=None):
     '''
     Take a pattern of fits file names and stacks the headers
     in a dict list. [{FILTER:V, EXPTIME:10}, {FILTER:R, EXPTIME:10}]
@@ -31,19 +32,20 @@ def table(pattern, sort_by=None):
     if isinstance(pattern, str):
         pattern = [pattern]
 
-
     log.info(f"Stacking {len(pattern)} in a table. It can take a while...")
     heads = [ get_fits_header(f, fast=True) for f in pattern ]
-    tabled_heads = [ dict([ [h["name"],h["value"]] for h in H.records()]) for H in heads ]
+    tabled_heads = [ dict( [h["name"],h["value"]] for h in H.records() ) for H in heads ]
 
     log.info("Adding a FULLPATH keyword to retrieve the original file path...")
     full_path = [ {'FULLPATH': f} for f in pattern ]
-    tabled_heads = [{**u, **v} for u, v in zip(tabled_heads, full_path)]
+    tabled_heads = [{**u, **v} for u, v  in zip(tabled_heads, full_path)]
+
+    table = Table(tabled_heads)
 
     if sort_by:
-        tabled_heads = sort(tabled_heads, sort_by)
+        table.sort(sort_by)
 
-    return tabled_heads
+    return table
 
 
 def group(table_dict, keys, show=None):
@@ -95,7 +97,7 @@ class minidb():
         keys = self.heads[0].keys()
         values = [ [ h.get(k) for h in self.heads ] for k in keys ]
         dic = dict(zip(keys, values))
-        dic["ARP FILENAME"] = pattern # adding filename
+        dic["FULLPATH"] = pattern # adding filename
         self.dic = dic
         self.table = Table(dic) # original
         self.data = self.table
@@ -107,10 +109,11 @@ class minidb():
         #     keys = [keys]
         self.data = self.table.group_by(keys)
         self.unique = self.data.groups.keys.as_array().tolist()
-        return self.data.groups
+        return self #.data.groups
 
 
-    def show(self, keys):
+    def names_for(self, keys):
+        print(self.data)
         self.names = np.array(self.data[keys]).tolist()
         #self.data = self.table[keys]
         return self.names
@@ -121,11 +124,12 @@ class dfits():
     dfits | fitsort simple clone.
     Uses fast fitsio method by default.
     '''
-    def __init__(self, pattern):
+    def __init__(self, pattern, fast=False):
         if isinstance(pattern, str):
             pattern = [pattern]
         self.pattern = pattern
-        self.heads = [ get_fits_header(f, fast=True) for f in pattern ]
+        log.info(f"dfits {len(pattern)} files. It can take some seconds.")
+        self.heads = [ get_fits_header(f, fast=fast) for f in pattern ]
         self.data = self.heads
 
     def fitsort(self, keys):
