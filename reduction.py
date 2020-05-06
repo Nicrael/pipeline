@@ -11,7 +11,9 @@ import astropy.units as u
 import fitsio
 import numpy as np
 
-from sorters import minidb, dfits
+import cv2
+
+import sorters as s # apparently, no cross imports
 from naming import output_file, hist
 
 ##########################################################################
@@ -166,7 +168,7 @@ def generic(pattern, keys=[], normalize=False, method=None,
 
     log.info(f'fitsort {len(pattern)} files per {keys}')
 
-    df = dfits(pattern)
+    df = s.dfits(pattern)
     sortlist = df.fitsort(keys)
     heads = df.heads
 
@@ -304,6 +306,36 @@ def detect_sources(pattern):
     d['x1'] = np.array(sources['xcentroid'])
     d['y1'] = np.array(sources['ycentroid'])
     return(d)
+
+
+def rescale(array):
+    '''
+    Takes an array.
+    Rescale min to 0,  max to 255, then
+    change dtype, as opencv loves uint8 data type.
+    Returns the rescaled uint8 array.
+    '''
+    array -= np.min(array)
+    array = array/(np.max(array)/255.0)
+    return array.astype(np.uint8)
+
+
+def detect_donuts(filename, template):
+
+    img = rescale(get_fits_data(filename))
+    tpl = rescale(get_fits_data(template))
+
+    res = cv2.matchTemplate(img, tpl, cv2.TM_CCOEFF_NORMED)
+    threshold = 0.6
+
+    loc = np.where( res >= threshold)
+    x,y = loc
+    p = np.repeat("point ", y.size)
+    t = [p, (y+tpl.shape[0]/2),(x+tpl.shape[1]/2)]
+    table = Table(t, names=['# ','## ','###']) # bleah
+    ascii.write(table, "donuts.reg", overwrite=True)
+
+    return res
 
 
 def main():

@@ -7,8 +7,9 @@ import itertools as it
 
 from astropy import log
 from astropy.table import Table
-from reduction import get_fits_header
 
+#from reduction import get_fits_header
+import reduction as r # apparently, no cross imports
 
 def sort(dict_list, keys):
     '''
@@ -33,7 +34,7 @@ def make_table(pattern, sort_by=None):
         pattern = [pattern]
 
     log.info(f"Stacking {len(pattern)} in a table. It can take a while...")
-    heads = [ get_fits_header(f, fast=True) for f in pattern ]
+    heads = [ r.get_fits_header(f, fast=True) for f in pattern ]
     tabled_heads = [ dict( [h["name"],h["value"]] for h in H.records() ) for H in heads ]
 
     log.info("Adding a FULLPATH keyword to retrieve the original file path...")
@@ -93,7 +94,7 @@ class minidb():
         if isinstance(pattern, str):
             pattern = [pattern]
         self.pattern = pattern
-        self.heads = [ get_fits_header(f, fast=True) for f in pattern ]
+        self.heads = [ r.get_fits_header(f, fast=True) for f in pattern ]
         keys = self.heads[0].keys()
         values = [ [ h.get(k) for h in self.heads ] for k in keys ]
         dic = dict(zip(keys, values))
