@@ -71,12 +71,12 @@
     [ "alt"            ,    ".3f",    "[deg] Tel ALT angle at start" ],
     [ "az"             ,    ".3f",    "[deg] Tel Azimuth at start" ],
     [ "ha"             ,    ".6s",    "Hour angle at start" ],
-    [ "zdist"          ,    ".3f",    "Zenit distance at start of exposure" ],
-    [ "sunalt"         ,    ".3f",    "Sun alt angle at start" ],
-    [ "sundist"        ,    ".3f",    "Sun distance from the target" ],
-    [ "moonalt"        ,    ".3f",    "Moon alt angle at start" ],
-    [ "moondist"       ,    ".3f",    "Moon distance from the target" ],
-    [ "plate"          ,    ".2f",    "Plate scale" ],
+    [ "zdist"          ,    ".3f",    "[deg] Zenit distance at start of exposure" ],
+    [ "sunalt"         ,    ".3f",    "[deg] Sun alt angle at start" ],
+    [ "sundist"        ,    ".3f",    "[deg] Sun distance from the target" ],
+    [ "moonalt"        ,    ".3f",    "[deg] Moon alt angle at start" ],
+    [ "moondist"       ,    ".3f",    "[deg] Moon distance from the target" ],
+    [ "plate"          ,    ".6f",    "[deg] Plate scale" ],
     [ "fullpath"       ,    "s",      "Full path of the filename in the pipeline" ],
 
 

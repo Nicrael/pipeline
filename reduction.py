@@ -7,6 +7,12 @@ from astropy.io import fits, ascii
 from astropy.stats import sigma_clip
 from astropy.table import Table
 from astropy.time import Time
+
+from astropy.wcs import WCS
+from astroquery.mast import Catalogs
+from photutils import SkyCircularAperture, SkyCircularAnnulus, aperture_photometry
+from astropy.coordinates import SkyCoord
+
 import astropy.units as u
 import fitsio
 import numpy as np
@@ -15,6 +21,7 @@ import cv2
 
 import sorters as s # apparently, no cross imports
 from naming import output_file, hist
+from fill_header import init_observatory
 
 ##########################################################################
 
@@ -31,10 +38,7 @@ def choose_hdu(filename, fast=False):
         finfo = fits.info(filename, output=False) # List of tuples.
         finfo_list = [ f[0] for f in finfo if 'COMPRESSED_IMAGE' in f ]
 
-    if not finfo_list:
-        return 0 # finfo # 0 if not compressed
-    else:
-        return 1 # finfo_list[0] # 1 if compressed
+    return 0 if not finfo_list else 1 # finfo=0 # finfo_list[0]=1
 
 
 def get_fits_header(filename, fast=False):
@@ -152,114 +156,116 @@ def mask_reg(data, sigma=3, output_file=None):
     return table
 
 
-def master_bias(pattern, keys):
+def master_bias(pattern, keys=[]):
     generic(pattern, keys=keys, method="median", product="MBIAS")
 
-def master_flat(pattern, keys, mbias):
-    generic(pattern, keys=keys, method="median", product="MFLAT",
-            mbias=mbias, normalize=True)
+def master_dark(pattern, keys=[], mbias=None):
+    generic(pattern, keys=keys, method="median", product="MDARK",
+            mbias=mbias)
 
-def correct_image(pattern, keys, mbias, mflat, method='slice'):
-    generic(pattern, keys, method=method, product="CLEAN",
-            mbias=mbias, mflat=mflat)
+def master_flat(pattern, keys=[], mbias=None, mdark=None):
+    generic(pattern, keys=keys, method="median", product="MFLAT",
+            mbias=mbias, mdark=mdark, normalize=True)
+
+def correct_image(pattern, keys=[], mbias=None, mdark=None, mflat=None,
+                  method='slice', new_header=False):
+    generic(pattern, keys=keys, method=method, product="CLEAN",
+            mbias=mbias, mdark=mdark, mflat=mflat, new_header=new_header)
 
 def generic(pattern, keys=[], normalize=False, method=None,
-            mbias=None, mdark=None, mflat=None, product=None):
+            mbias=None, mdark=None, mflat=None, product=None,
+            new_header=False):
 
-    log.info(f'fitsort {len(pattern)} files per {keys}')
+    log.info(f'fitsort {len(pattern)} filenames per {keys}')
 
     df = s.dfits(pattern)
     sortlist = df.fitsort(keys)
     heads = df.heads
 
+    if new_header: o = init_observatory(new_header)
+
     for value in sortlist.unique_values :
-        files = sortlist.unique_names_for(value)
-        log.info(f'getting {len(files)} files for {value}')
+        filenames = sortlist.unique_names_for(value)
+        log.info(f'getting {len(filenames)} filenames for {value}')
 
         # Combine (and save) data per data.
-        if method is "slice" or method is "individual":
-            for i,f in enumerate(files):
-                datas = get_fits_data(f)
-                output = combine(f, normalize=normalize,
+        if method == "slice" or method == "individual":
+            for i,filename in enumerate(sorted(filenames)):
+                datas = get_fits_data(filename)
+                output = combine(filename, normalize=normalize,
                                  mbias=mbias, mdark=mdark, mflat=mflat)
 
-                closing(heads, keys, value, product, output, counter=i)
+                header = o.newhead(heads[i]) if new_header else heads[i]
+
+                closing(keys, value, product, output, counter=i,
+                        header=header)
 
         # Combine and save acting on a data cube
         else:
-            datas = np.array([ get_fits_data(f) for f in files ])
+            datas = np.array([ get_fits_data(f) for f in filenames ])
             output = combine(datas, normalize=normalize, method=method,
                              mbias=mbias, mdark=mdark, mflat=mflat)
 
-            closing(heads, keys, value, product, output)
+            header = o.newhead(header=heads[0]) if new_header else heads[0]
+
+            closing(keys, value, product, output, header=header)
 
 
-def closing(heads, keys, value, product, output, counter=False):
+def closing(keys, value, product, output, counter=False, header=False):
 
-    header = heads[0].copy() # TODO choose head per head
-    header.add_history(hist())
+    if header:
+        #header = heads[0].copy() # TODO choose head per head
+        header.add_history(hist())
+
     text = dict(zip(keys, value)) if keys else None
     outfile =  output_file(product=product, text=text, counter=counter)
     write_fits(output, outfile, header=header, fast=False)
 
 
-def combine(datas, normalize=False, method=None,
+def combine(datas, normalize=False, method=None, precision='float32',
             mbias=None, mdark=None, mflat=None, mask=False):
 
     a = Time.now()
 
-    if len(datas): # Check if datas is not empty
+    # Datas from pattern
+    if isinstance(datas, str): datas = [datas]
+    if isinstance(datas, list) and isinstance(datas[0], str):
+        datas = np.array([get_fits_data(d) for d in datas ])
 
-        # Datas from pattern
-        if isinstance(datas, str): datas = [datas]
-        if isinstance(datas, list) and isinstance(datas[0], str):
-            datas = np.array([get_fits_data(d) for d in datas ])
+    # Master datas from filename
+    if isinstance(mbias, str): mbias = get_fits_data(mbias)
+    if isinstance(mdark, str): mdark = get_fits_data(mdark)
+    if isinstance(mflat, str): mflat = get_fits_data(mflat)
 
-        # Master datas from filename
-        if isinstance(mbias, str): mbias = get_fits_data(mbias)
-        if isinstance(mdark, str): mdark = get_fits_data(mdark)
-        if isinstance(mflat, str): mflat = get_fits_data(mflat)
+    # Cannot cast type
+    if mbias is not None and len(mbias):
+        datas = (datas - mbias).astype(precision)
+    if mdark is not None and len(mdark):
+        datas = (datas - mdark).astype(precision)
+    if mflat is not None and len(mflat):
+        datas = (datas / mflat).astype(precision)
 
-        precision='float32'
+    del mbias, mdark, mflat
 
-        # Cannot cast type
-        if mbias is not None and len(mbias):
-            datas = (datas - mbias).astype(precision)
-        if mdark is not None and len(mdark):
-            datas = (datas - mdark).astype(precision)
-        if mflat is not None and len(mflat):
-            datas = (datas / mflat).astype(precision)
+    # Did not find a faster method to save memory.
+    if normalize:
+        bottle = np.zeros(shape=datas.shape).astype(precision)
+        for i, d in enumerate(datas):
+            bottle[i] = d/np.mean(d).astype(precision)
+        datas = bottle
+        del bottle
 
-        del mbias, mdark, mflat
+    if method == 'average':
+        combined = np.average(datas, axis=0).astype(precision)
+    elif method == 'median':
+        combined = np.median(datas, axis=0).astype(precision)
+    else: # cube or 1-slice cube.
+        combined = np.squeeze(datas)
 
-        # Did not find a faster method to save memory.
-        if normalize:
-            bottle = np.zeros(shape=datas.shape).astype(precision)
-            for i, d in enumerate(datas):
-                bottle[i] = d/np.mean(d).astype(precision)
-            datas = bottle
-            del bottle
-
-        # if normalize:
-        #     for i, d in enumerate(datas):
-        #         datas[i] = (d/np.mean(d)).astype(precision)
-
-        if method is 'average':
-            combined = np.average(datas, axis=0).astype(precision)
-        elif method is 'median':
-            combined = np.median(datas, axis=0).astype(precision)
-        else: # cube or 1-slice cube.
-            combined = np.squeeze(datas)
-
-        log.info(f'{method}: {datas.shape}{datas.dtype} -> {combined.shape}{combined.dtype}')
-
-        del datas # Saving memory
-
-    else: # len(datas) == 0
-        log.warn('Input datas are empty:  Result is input.')
-        combined = np.array(datas, dtype=np.uint16)
-
+    log.info(f'{method}: {datas.shape}{datas.dtype} -> {combined.shape}{combined.dtype}')
     log.info(f'Done in {Time.now().unix - a.unix :.1f}s')
+    del datas # Saving memory
+
     return combined
 
 
@@ -286,26 +292,21 @@ def update_keyword(header, key, *tup, comment=None):
     return header
 
 
-
-def detect_sources(pattern):
+def detect_sources(image):
     ''' By Anna Marini
     Extract the light sources from the image
     '''
-    rot = rotate_img(pattern)
-    threshold = detect_threshold(rot, nsigma=2.)
+    threshold = detect_threshold(image, nsigma=2.)
     sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
     kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     kernel.normalize()
-    mean, median, std = sigma_clipped_stats(rot, sigma=3)
+    mean, median, std = sigma_clipped_stats(image, sigma=3)
     daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
-    sources = daofind(rot - median)
-    for col in sources.colnames:
-        sources[col].info.format = '%.8g'  # for consistent table output
+    sources = daofind(image - median)
    # Pixel coordinates of the sources
-    d = dict();
-    d['x1'] = np.array(sources['xcentroid'])
-    d['y1'] = np.array(sources['ycentroid'])
-    return(d)
+    x = np.array(sources['xcentroid'])
+    y = np.array(sources['ycentroid'])
+    return x,y
 
 
 def rescale(array):
@@ -321,6 +322,9 @@ def rescale(array):
 
 
 def detect_donuts(filename, template):
+    '''
+    Use opencv to find centroids of highly defocused images template matching.
+    '''
 
     img = rescale(get_fits_data(filename))
     tpl = rescale(get_fits_data(template))
@@ -336,6 +340,101 @@ def detect_donuts(filename, template):
     ascii.write(table, "donuts.reg", overwrite=True)
 
     return res
+
+
+def load_catalog(filename=False, header=False, wcs=False, ra_key=False, dec_key=False):
+    '''
+    From Anna Marini: get positions from catalog.
+    '''
+
+    if filename and not header: header = get_fits_header(filename)
+    if header and not wcs:
+        wcs = WCS(header)
+        if ra_key and dec_key:
+            ra = header[ra_key]
+            dec = header[dec_key]
+
+    ra = wcs.wcs.crval[0]
+    dec = wcs.wcs.crval[1]
+
+    # Diagonal
+    diag_bound = wcs.pixel_to_world_values([ [0,0], wcs.pixel_shape ])
+    radius = np.mean(diag_bound[1] - diag_bound[0]) / 2
+
+    catalog = Catalogs.query_region(f'{ra} {dec}',
+                                    frame='fk5',
+                                    unit="deg",
+                                    radius=radius,
+                                    catalog = 'TIC')
+
+    return catalog
+
+
+def set_apertures(catalog, limit=16, r=6, r_in=7, r_out=10):
+    '''From Anna Marini: get a catalog and
+    set apertures and annulus for photometry.
+    '''
+    radec = catalog['ra','dec','Vmag']
+    mask = radec['Vmag']<limit
+    radec = radec[mask]
+
+    positions = SkyCoord(radec['ra'], radec['dec'],
+                         frame='fk5',
+                         unit=(u.deg,u.deg))
+
+    aperture = SkyCircularAperture(positions,
+                                   r=r*u.arcsec)
+    annulus = SkyCircularAnnulus(positions,
+                                 r_in=r_in*u.arcsec,
+                                 r_out=r_out*u.arcsec)
+    apers = [aperture, annulus]
+
+    return apers
+
+
+def do_photometry(data, apers, wcs, obstime=False):
+
+    phot_table = aperture_photometry(data, apers, wcs=wcs)
+
+    pixar = apers[0].to_pixel(wcs)
+    pixan = apers[1].to_pixel(wcs)
+
+    bkg_mean = phot_table['aperture_sum_1'] / pixan.area
+    bkg_sum = bkg_mean * pixar.area
+    final_sum = phot_table['aperture_sum_0'] - bkg_sum
+    
+    phot_table['residual_aperture_sum'] = final_sum
+    phot_table['mjd-obs'] = obstime
+    
+    return(phot_table)
+
+
+def apphot(pattern, catalog):
+
+    pattern = sorted(pattern)
+
+    header0 = get_fits_header(pattern[0])
+    wcs0 = WCS(header0)
+    
+    catalog = load_catalog(wcs=wcs0)
+    apers = set_apertures(catalog)
+
+    tables = Table()
+
+    for filename in pattern:
+        header = get_fits_header(filename)
+        data = get_fits_data(filename)
+        wcs = WCS(header)
+            
+        phot_table = do_photometry(data, apers, wcs, obstime=header["MJD-OBS"])
+
+        tables.add_column(phot_table["residual_aperture_sum"]*u.ct, rename_duplicate=True)
+            
+        log.info(f"Done {filename}")
+
+    return tables
+
+
 
 
 def main():

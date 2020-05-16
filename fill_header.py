@@ -82,6 +82,7 @@ class observatory():
                                  height=self.alt)
 
         timekey = head[self.obstime]
+        #log.warning(timekey)
         if 'MJD' in self.obstime:
             obstime = Time(timekey, format='mjd')
         elif self.obstime == 'JD':
@@ -191,15 +192,18 @@ class observatory():
         return w
 
 
-    def newhead(self):
+    def newhead(self, header=False):
+
+        if header:
+            self.head = header
 
         nh = self.head.copy()
 
-        if not hasattr(self, 'plate'):
-            self.detector()
+        #if not hasattr(self, 'plate'):
+        self.detector()
 
-        if not hasattr(self, 'coord'):
-            self.skycoord()
+        #if not hasattr(self, 'coord'):
+        self.skycoord()
 
         c = self.coord
 
@@ -269,8 +273,41 @@ class observatory():
         nh = sethead(nh)
 
         self.nh = nh
+        return nh
+        
 
+def solver(pattern, ra=False, dec=False, scale=False):
+    '''
+    Calls the solve-field command from the astrometry.net
+    debian package.
+    '''
+    
+    import os
+        
+    cmd = f'solve-field {pattern} \
+    --crpix-center \
+    --downsample 2 \
+    --no-plots \
+    --dir solved \
+    --overwrite'
+        
+    if (ra and dec):
+        cmd += f' \
+        --radius 0.1 \
+        --ra {ra} \
+        --dec {dec}'
+        
+    if scale:
+        cmd += f' \
+        --scale-units arcsecperpix \
+        --scale-low {float(scale)*0.9} \
+        --scale-high {float(scale)*1.1}'
 
+    print(cmd)
+        
+    os.system(cmd)
+
+    
 def sethead(head):
     ''' By Davide Ricci.
     Add a keyword in the header with comment and format
@@ -351,7 +388,7 @@ def main():
     pattern = sys.argv[2:]
     for filename in pattern:
         o.filename = filename
-        o.skycoord()
+        #o.skycoord()
         o.newhead()
         print(o.nh)
 

@@ -87,11 +87,12 @@ for o in objects:
 ##########################################
 
 import glob
-from reduction import master_bias, master_flat, correct_image
+from reduction import master_bias, master_flat, correct_image, get_fits_header
 from naming import skeleton
 from sorters import dfits
+from fill_header import observatory, solver, init_observatory
 
-skeleton()
+skeleton(date=True)
 
 biases = glob.glob("gj3470/*/bias/*.fit*")
 keys = ['ccdxbin']
@@ -103,28 +104,14 @@ mbias = 'arp.MBIAS.ccdxbin=2.fits'
 master_flat(flats, keys, mbias=mbias)
 
 obj_all = glob.glob("gj3470/*/object/*.fit*")
-objects = dfits(obj_all, fast=True).fitsort(['object']).unique_names_for(('GJ3470  ',))
+objects = dfits(obj_all, fast=True).fitsort(['object']).unique_names_for(('GJ3470',))
 mflat = "arp.MFLAT.ccdxbin=2.filter=vacio+V3.fits"
-correct_image(objects, keys, mbias=mbias, mflat=mflat)
 
-solvituri = glob.glob("reduced/*new")
-def solver(solvituri, header=False):
-    import os
 
-    cmd = f'solve-field \
-    {pattern} \
-    --crpix-center \
-    --scale-units arcsecperpix \
-    --scale-low 0.2 \
-    --scale-high 0.6 \
-    --ra 119.7433 \
-    --dec 15.39145 \
-    --radius 0.1 \
-    --downsample 2 \
-    --no-plots \
-    --overwrite'
+correct_image(objects, keys, mbias=mbias, mflat=mflat, new_header="Mexman")
 
-    os.system(cmd)
+#solvituri = glob.glob("arp-data-2020-05-15T08:41:17/reduced/*fit*")
+
 
 
 ##########################################

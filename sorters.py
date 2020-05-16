@@ -30,11 +30,13 @@ def make_table(pattern, sort_by=None):
     It adds the full path filename.
     Can be sorted by a list of keywords, for example JD.
     '''
-    if isinstance(pattern, str):
-        pattern = [pattern]
+    pattern = sorted(pattern)
 
     log.info(f"Stacking {len(pattern)} in a table. It can take a while...")
     heads = [ r.get_fits_header(f, fast=True) for f in pattern ]
+    for i,p in enumerate(pattern): 
+        heads[i]["FULLPATH"] = pattern[i] 
+ 
     tabled_heads = [ dict( [h["name"],h["value"]] for h in H.records() ) for H in heads ]
 
     log.info("Adding a FULLPATH keyword to retrieve the original file path...")
@@ -91,14 +93,15 @@ def group(table_dict, keys, show=None):
 class minidb():
 
     def __init__(self, pattern):
-        if isinstance(pattern, str):
-            pattern = [pattern]
+        pattern = sorted(pattern)
         self.pattern = pattern
         self.heads = [ r.get_fits_header(f, fast=True) for f in pattern ]
+        for i,p in enumerate(pattern): 
+            self.heads[i]["FULLPATH"] = pattern[i]  
         keys = self.heads[0].keys()
         values = [ [ h.get(k) for h in self.heads ] for k in keys ]
         dic = dict(zip(keys, values))
-        dic["FULLPATH"] = pattern # adding filename
+        #dic["FULLPATH"] = pattern # adding filename
         self.dic = dic
         self.table = Table(dic) # original
         self.data = self.table
@@ -126,11 +129,12 @@ class dfits():
     Uses fast fitsio method by default.
     '''
     def __init__(self, pattern, fast=False):
-        if isinstance(pattern, str):
-            pattern = [pattern]
+        pattern = sorted(pattern)
         self.pattern = pattern
         log.info(f"dfits {len(pattern)} files. It can take some seconds.")
-        self.heads = [ get_fits_header(f, fast=fast) for f in pattern ]
+        self.heads = [ r.get_fits_header(f, fast=fast) for f in pattern ]
+        for i,p in enumerate(pattern): 
+            self.heads[i]["FULLPATH"] = pattern[i]  
         self.data = self.heads
 
     def fitsort(self, keys):
