@@ -370,7 +370,7 @@ def load_catalog(filename=False, header=False, wcs=False, ra_key=False, dec_key=
     return catalog
 
 
-def set_apertures(catalog, limit=16, r=6, r_in=7, r_out=10):
+def set_apertures(catalog, limit=16, r=10, r_in=18, r_out=22):
     '''From Anna Marini: get a catalog and
     set apertures and annulus for photometry.
     '''
@@ -409,7 +409,7 @@ def do_photometry(data, apers, wcs, obstime=False):
     return(phot_table)
 
 
-def apphot(pattern, catalog):
+def apphot(pattern, display=False):
 
     pattern = sorted(pattern)
 
@@ -421,20 +421,49 @@ def apphot(pattern, catalog):
 
     tables = Table()
 
+    if display:
+        import pyds9
+        d=pyds9.DS9("ds9")
+        
     for filename in pattern:
         header = get_fits_header(filename)
         data = get_fits_data(filename)
         wcs = WCS(header)
+    
+        #catalog = load_catalog(wcs=wcs)
+        #apers = set_apertures(catalog)
             
         phot_table = do_photometry(data, apers, wcs, obstime=header["MJD-OBS"])
 
-        tables.add_column(phot_table["residual_aperture_sum"]*u.ct, rename_duplicate=True)
+        positions = SkyCoord(catalog['ra'], catalog['dec'],
+                             frame='fk5',
+                             unit=(u.deg,u.deg))                
+
+        if display:
+            d.set(f"file {filename}")
+            
+            # for i,pos in enumerate(positions):
+            #     p = pos.to_pixel(wcs)
+            #     circ = f'circle({p[0]}, {p[1]}, {10})'
+            #     d.set("regions", circ)
+            #     d.set("region", f"text {p[0]} {p[1]} "+"{"+str(i)+"}")
+                
+            for i,a in enumerate(apers[0].to_pixel(wcs)) :
+                circ = f'circle({a.positions[0]}, {a.positions[1]}, {a.r})'
+                d.set("regions", circ)
+                d.set("region", f"text {a.positions[0]}, {a.positions[1]} "+"{"+str(i)+"}")
+            
+            for a in apers[1].to_pixel(wcs):
+                circ = f'circle({a.positions[0]}, {a.positions[1]}, {a.r_in})'
+                d.set("regions", circ)
+                circ = f'circle({a.positions[0]}, {a.positions[1]}, {a.r_out})'
+                d.set("regions", circ)
+        
+        tables.add_column(phot_table["residual_aperture_sum"], rename_duplicate=True)
             
         log.info(f"Done {filename}")
 
     return tables
-
-
 
 
 def main():

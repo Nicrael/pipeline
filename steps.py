@@ -107,10 +107,19 @@ obj_all = glob.glob("gj3470/*/object/*.fit*")
 objects = dfits(obj_all, fast=True).fitsort(['object']).unique_names_for(('GJ3470',))
 mflat = "arp.MFLAT.ccdxbin=2.filter=vacio+V3.fits"
 
-
 correct_image(objects, keys, mbias=mbias, mflat=mflat, new_header="Mexman")
 
 #solvituri = glob.glob("arp-data-2020-05-15T08:41:17/reduced/*fit*")
+
+solver("*CLEAN*fits")
+
+solved = sorted(glob.glob("arp-data-2020-05-15T12:59:46/solved/*CLEAN*.new")) 
+dates = [get_fits_header(f, fast=True)["MJD-OBS"] for f in solved] 
+airmass = [get_fits_header(f, fast=True)["AIRMASS"] for f in solved] 
+tables = apphot(solved)
+tabellone = np.array([t[k] for k in t.keys() ])
+tabellone=np.insert(tabellone,  0, [dates, airmass], axis=1)
+ascii.write( tabellone, "tabellone.txt", overwrite=True)
 
 
 
