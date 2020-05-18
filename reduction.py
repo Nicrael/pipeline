@@ -362,10 +362,10 @@ def load_catalog(filename=False, header=False, wcs=False, ra_key=False, dec_key=
     radius = np.mean(diag_bound[1] - diag_bound[0]) / 2
 
     catalog = Catalogs.query_region(f'{ra} {dec}',
-                                    frame='icrs',
-                                    unit="deg",
+                                    #frame='icrs',
+                                    #unit="deg",
                                     radius=radius,
-                                    catalog = 'TIC')
+                                    catalog = 'Gaia', version=2)
 
     return catalog
 
@@ -374,8 +374,8 @@ def set_apertures(catalog, limit=16, r=10, r_in=15.5, r_out=25):
     '''From Anna Marini: get a catalog and
     set apertures and annulus for photometry.
     '''
-    radec = catalog['ra','dec','Vmag']
-    mask = radec['Vmag']<limit
+    radec = catalog['ra','dec','phot_g_mean_mag']
+    mask = radec['phot_g_mean_mag']<limit
     radec = radec[mask]
 
     positions = SkyCoord(radec['ra'], radec['dec'],
@@ -409,7 +409,7 @@ def do_photometry(data, apers, wcs, obstime=False):
     return(phot_table)
 
 
-def apphot(pattern, display=False):
+def apphot(pattern, display=False, r=False, r_in=False, r_out=False):
 
     pattern = sorted(pattern)
 
@@ -417,7 +417,10 @@ def apphot(pattern, display=False):
     wcs0 = WCS(header0)
     
     catalog = load_catalog(wcs=wcs0)
-    apers = set_apertures(catalog)
+    if r and r_in and r_out:
+        apers = set_apertures(catalog, r=r, r_in=r_in, r_out=r_out)
+    else:
+        apers = set_apertures(catalog)
 
     tables = Table()
 
@@ -431,7 +434,7 @@ def apphot(pattern, display=False):
         wcs = WCS(header)
     
         #catalog = load_catalog(wcs=wcs)
-        #apers = set_apertures(catalog)
+        #apers = set_apertures(catalog, r=r, r_in=r_in, r_out=r_out)
             
         phot_table = do_photometry(data, apers, wcs, obstime=header["MJD-OBS"])
 
