@@ -362,7 +362,7 @@ def load_catalog(filename=False, header=False, wcs=False, ra_key=False, dec_key=
     radius = np.mean(diag_bound[1] - diag_bound[0]) / 2
 
     catalog = Catalogs.query_region(f'{ra} {dec}',
-                                    frame='fk5',
+                                    frame='icrs',
                                     unit="deg",
                                     radius=radius,
                                     catalog = 'TIC')
@@ -370,7 +370,7 @@ def load_catalog(filename=False, header=False, wcs=False, ra_key=False, dec_key=
     return catalog
 
 
-def set_apertures(catalog, limit=16, r=10, r_in=18, r_out=22):
+def set_apertures(catalog, limit=16, r=10, r_in=15.5, r_out=25):
     '''From Anna Marini: get a catalog and
     set apertures and annulus for photometry.
     '''
@@ -436,7 +436,7 @@ def apphot(pattern, display=False):
         phot_table = do_photometry(data, apers, wcs, obstime=header["MJD-OBS"])
 
         positions = SkyCoord(catalog['ra'], catalog['dec'],
-                             frame='fk5',
+                             frame='icrs',
                              unit=(u.deg,u.deg))                
 
         if display:
