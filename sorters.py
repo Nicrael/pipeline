@@ -5,7 +5,7 @@
 from astropy import log
 
 # Local modules
-import reduction as r # apparently, no cross imports
+from fits import get_fits_header
 
 class dfits():
     '''
@@ -16,7 +16,7 @@ class dfits():
         filenames = sorted(filenames)
         self.filenames = filenames
         log.info(f"dfits {len(filenames)} files. It can take some seconds.")
-        self.heads = [ r.get_fits_header(f, fast=fast) for f in filenames ]
+        self.heads = [ get_fits_header(f, fast=fast) for f in filenames ]
         for i,p in enumerate(filenames): 
             self.heads[i]["FULLPATH"] = filenames[i]  
         self.data = self.heads
@@ -64,7 +64,7 @@ def make_table(filenames, sort_by=None):
     filenames = sorted(filenames)
 
     log.info(f"Stacking {len(filenames)} in a table. It can take a while...")
-    heads = [ r.get_fits_header(f, fast=True) for f in filenames ]
+    heads = [ get_fits_header(f, fast=True) for f in filenames ]
     for i,p in enumerate(filenames): 
         heads[i]["FULLPATH"] = filenames[i] 
  
@@ -128,7 +128,7 @@ class minidb():
     def __init__(self, filenames):
         filenames = sorted(filenames)
         self.filenames = filenames
-        self.heads = [ r.get_fits_header(f, fast=True) for f in filenames ]
+        self.heads = [ get_fits_header(f, fast=True) for f in filenames ]
         for i,p in enumerate(filenames): 
             self.heads[i]["FULLPATH"] = filenames[i]  
         keys = self.heads[0].keys()

@@ -644,3 +644,23 @@ imagetyps = group(db, ["IMAGETYP", "FILTER"], "FULLPATH")
 
 for s in  imagetyps:
     print(s, len(imagetyps[s]))
+
+
+def main():
+    '''
+    Main function
+    '''
+    pattern = sys.argv[1:] # File(s). "1:" stands for "From 1 on".
+
+
+if __name__ == '__main__':
+    '''
+    If called as a script
+    '''
+    import sys
+
+    if len(sys.argv) < 2 :    # argv[0] is the filename.
+        print("Usage:  "+sys.argv[0]+" <list of FITS files>")
+        sys.exit()
+
+    main()

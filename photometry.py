@@ -17,7 +17,7 @@ import cv2
 import numpy as np
 
 # Local modules
-from reduction import get_fits_header, get_fits_data
+from fits import get_fits_header, get_fits_data
 
 
 def detect_sources(image):
@@ -134,11 +134,11 @@ def do_photometry(data, apers, wcs, obstime=False):
     return(phot_table)
 
 
-def apphot(filenames, display=False, r=False, r_in=False, r_out=False):
+def apphot(filenames, reference=10, display=False, r=False, r_in=False, r_out=False):
 
     filenames = sorted(filenames)
 
-    header0 = get_fits_header(filenames[0])
+    header0 = get_fits_header(filenames[reference])
     wcs0 = WCS(header0)
     
     catalog = load_catalog(wcs=wcs0)

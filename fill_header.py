@@ -6,7 +6,7 @@
 
 # System modules
 from astropy import log
-from astropy.coordinates import AltAz, EarthLocation, SkyCoord
+from astropy.coordinates import EarthLocation, SkyCoord
 from astropy.coordinates import get_sun, get_moon
 from astropy.coordinates import FK5
 from astropy.io import fits
@@ -16,10 +16,9 @@ import astropy.units as u
 import numpy as np
 import json
 
-import naming
-
 # Local modules
-import reduction as r
+from fits import get_fits_header
+from naming import hist
 
 
 class observatory():
@@ -164,11 +163,11 @@ class observatory():
         '''
         head = self.head.copy()
 
-        if not hasattr(self, 'coord'):
-            self.skycoord()
+        #if not hasattr(self, 'coord'):
+        self.coord = self.skycoord()
 
-        if not hasattr(self, 'plate'):
-            self.detector()
+        #if not hasattr(self, 'plate'):
+        self.plate = self.detector()
 
         angle = 0
         flip = 1
@@ -205,6 +204,9 @@ class observatory():
 
         #if not hasattr(self, 'coord'):
         self.skycoord()
+        
+        #if not hasattr(self, 'w'):
+        w = self.wcs()
 
         c = self.coord
 
@@ -260,16 +262,18 @@ class observatory():
         nh["moonalt"] = moon_altaz.alt.deg
         nh["moondist"] = moon_radec.separation(c).deg
 
-        if not hasattr(self, 'w'):
-            log.warn("calling wcs!!!")
-            #if "NAXIS1" in nh:
-            self.wcs()
-            nh.extend(self.w.to_header(), update=True)
+        #nh.extend(w.to_header(), update=True)
+
+        # if not hasattr(self, 'w'):
+        #     log.warn("calling wcs!!!")
+        #     #if "NAXIS1" in nh:
+        #     self.wcs()
+        #     nh.extend(self.w.to_header(), update=True)
 
         if hasattr(self, "_filename"):
             nh["FULLPATH"] = self.filename # .split("/")[-1])
 
-        nh.add_history(naming.hist(__name__))
+        nh.add_history(hist(__name__))
 
         nh = sethead(nh)
 
@@ -291,7 +295,7 @@ def solver(pattern, ra=False, dec=False, scale=False):
     --no-plots \
     --dir solved \
     --overwrite'
-        
+
     if (ra and dec):
         cmd += f' \
         --radius 0.1 \
@@ -377,31 +381,3 @@ def init_observatory(instrument):
 
     instrument = instruments[instrument]
     return observatory(**instrument)
-
-
-def main():
-    '''
-    Main function
-    '''
-
-    o = init_observatory(sys.argv[1])
-
-    pattern = sys.argv[2:]
-    for filename in pattern:
-        o.filename = filename
-        #o.skycoord()
-        o.newhead()
-        print(o.nh)
-
-
-if __name__ == '__main__':
-    '''
-    If called as a script
-    '''
-    import sys
-
-    if len(sys.argv) < 3 :    # C'è anche lo [0] che è il nome del file :)
-        log.info("Usage:  "+sys.argv[0]+" <instrument as in json> <list of FITS files>")
-        sys.exit()
-
-    main()

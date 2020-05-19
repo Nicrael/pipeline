@@ -3,91 +3,15 @@
 
 # System modules
 from astropy import log
-from astropy.io import fits, ascii
+from astropy.io import ascii
 from astropy.table import Table
-from astropy.time import Time
-import astropy.units as u
-import fitsio
 import numpy as np
 
 # Local modules
-import sorters as s # apparently, no cross imports
-from naming import output_file, hist
+from sorters import dfits # apparently, no cross imports
+from fits import get_fits_data, write_fits
 from fill_header import init_observatory
-
-
-def choose_hdu(filename, fast=False):
-    '''
-    Detect whether the fits file is compressed with
-    fpack, and choose the right HDU.
-    fast: Alternative mode based on fitsio
-    '''
-    if fast:
-        finfo = fitsio.FITS(filename) # Object
-        finfo_list = [ f.get_extnum() for f in finfo if f.is_compressed() ]
-    else:
-        finfo = fits.info(filename, output=False) # List of tuples.
-        finfo_list = [ f[0] for f in finfo if 'COMPRESSED_IMAGE' in f ]
-
-    return 0 if not finfo_list else 1 # finfo=0 # finfo_list[0]=1
-
-
-def get_fits_header(filename, fast=False):
-    '''
-    Return the header of the fits file.
-    fast uses fitsio.
-    '''
-    which_hdu = choose_hdu(filename, fast=fast)
-    if fast:
-        #header = fitsio.read_header(filename, which_hdu)
-        with fitsio.FITS(filename) as f:
-            header = f[which_hdu].read_header()
-    else:
-        header = fits.getheader(filename, which_hdu)
-
-    log.debug(f"Getting header from {filename}")
-    return header
-
-
-def get_fits_data(filename, fast=True):
-    '''
-    Return the data of the fits file.
-    If fitsio=True, use fitsio.
-    '''
-    which_hdu = choose_hdu(filename, fast=fast)
-    if fast:
-        #data = fitsio.read(filename, which_hdu)
-        with fitsio.FITS(filename) as f:
-            data = f[which_hdu].read()
-    else:
-        data = fits.getdata(filename, which_hdu)
-
-    log.debug(f"Getting data from {filename}")
-    return data
-
-
-def write_fits(data, output_file, header=None, fast=False):
-    '''
-    Write a fits file.
-    It adds a checksum keyword.
-    '''
-
-    if fast:
-        hdu = fitsio.FITS(output_file,'rw')
-        if header:
-            hdu.write(data=data, header=header)
-        else:
-            hdu.write(data=data)
-        hdu.close()
-    else:
-        if header:
-            hdu = fits.PrimaryHDU(data, header=header)
-        else:
-            hdu = fits.PrimaryHDU(data)
-        hdu.writeto(output_file, overwrite=True, checksum=True)
-
-    log.info(f"Writing fits file to {output_file}")
-    return hdu
+from naming import output_file, hist
 
 
 def master_bias(filenames, keys=[]):
@@ -112,7 +36,7 @@ def generic(filenames, keys=[], normalize=False, method=None,
 
     log.info(f'fitsort {len(filenames)} filenames per {keys}')
 
-    df = s.dfits(filenames)
+    df = dfits(filenames)
     sortlist = df.fitsort(keys)
     heads = df.heads
 
@@ -124,9 +48,10 @@ def generic(filenames, keys=[], normalize=False, method=None,
 
         # Combine (and save) data per data.
         if method == "slice" or method == "individual":
-            for i,filename in enumerate(sorted(filenames)):
-                datas = get_fits_data(filename)
-                output = combine(filename, normalize=normalize,
+            for i,filename in enumerate(filenames):
+
+                data = get_fits_data(filename)
+                output = combine(data, normalize=normalize,
                                  mbias=mbias, mdark=mdark, mflat=mflat)
 
                 header = o.newhead(heads[i]) if new_header else heads[i]
@@ -158,8 +83,7 @@ def closing(keys, value, product, output, counter=False, header=False):
 
 def combine(images, normalize=False, method=None, precision='float32',
             mbias=None, mdark=None, mflat=None, mask=False):
-
-    a = Time.now()
+    #a = Time.now()
 
     # Datas from pattern    
     if isinstance(images, str): images = [images]
@@ -199,7 +123,7 @@ def combine(images, normalize=False, method=None, precision='float32',
         combined = np.squeeze(datas)
 
     log.info(f'{method}: {datas.shape}{datas.dtype} -> {combined.shape}{combined.dtype}')
-    log.info(f'Done in {Time.now().unix - a.unix :.1f}s')
+    #log.info(f'Done in {Time.now().unix - a.unix :.1f}s')
     del datas # Saving memory
 
     return combined
@@ -211,7 +135,6 @@ def update_keyword(header, key, *tup, comment=None):
     Updates or create a keyword/value header pair of a given fits file list.
     '''
     value = tup[0].upper()
-    time = Time.now()
     #hist = time.isot[:-4]+" "
 
     if key not in header or not header[key]:
@@ -254,23 +177,3 @@ def mask_reg(data, sigma=3, output_file=None):
         ascii.write(table, output_file, overwrite=True)
 
     return table
-
-
-def main():
-    '''
-    Main function
-    '''
-    pattern = sys.argv[1:] # File(s). "1:" stands for "From 1 on".
-
-
-if __name__ == '__main__':
-    '''
-    If called as a script
-    '''
-    import sys
-
-    if len(sys.argv) < 2 :    # argv[0] is the filename.
-        print("Usage:  "+sys.argv[0]+" <list of FITS files>")
-        sys.exit()
-
-    main()
