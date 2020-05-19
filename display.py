@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# System modules
 import numpy as np
 import pyds9
 
-from reduction import get_fits_data
+# Local modules
+import reduction as r
 
 def ds9(*instance):
     '''
@@ -32,7 +34,7 @@ def show(*imgs, frame=1, target=False):
     print(lst)
     for i,img in enumerate(lst):
         if isinstance(img, str):
-            lst[i] = get_fits_data(img)
+            lst[i] = r.get_fits_data(img)
         imgs = tuple(lst)
 
     # If a list of fits is provided

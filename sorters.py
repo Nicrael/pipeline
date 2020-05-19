@@ -2,15 +2,44 @@
 # -*- coding: utf-8 -*-
 
 # System modules
-import numpy as np
-import itertools as it
-
 from astropy import log
-from astropy.table import Table
 
-#from reduction import get_fits_header
+# Local modules
 import reduction as r # apparently, no cross imports
 
+class dfits():
+    '''
+    dfits | fitsort simple clone.
+    Uses fast fitsio method by default.
+    '''
+    def __init__(self, filenames, fast=False):
+        filenames = sorted(filenames)
+        self.filenames = filenames
+        log.info(f"dfits {len(filenames)} files. It can take some seconds.")
+        self.heads = [ r.get_fits_header(f, fast=fast) for f in filenames ]
+        for i,p in enumerate(filenames): 
+            self.heads[i]["FULLPATH"] = filenames[i]  
+        self.data = self.heads
+
+    def fitsort(self, keys):
+        ph = zip(self.filenames,self.heads)
+        results = [ (p,(tuple(h[k] for k in keys))) for p,h in ph ]
+        self.keys = keys
+        self.names = [ r[0] for r in results ]
+        self.values = [ r[1] for r in results ]
+        self.unique_values = set(self.values)
+        self.data = results
+        return self
+
+    def unique_names_for(self, value):
+        un = [ d[0] for d in self.data if d[1] == value ]
+        return un
+
+    def grep(self, value):
+        gr = [ d for d in self.data if d[1] == value ]
+        return gr
+
+    
 def sort(dict_list, keys):
     '''
     Sort a dict list by a list of keys.
@@ -23,24 +52,26 @@ def sort(dict_list, keys):
     return dict_list
 
 
-def make_table(pattern, sort_by=None):
+def make_table(filenames, sort_by=None):
     '''
-    Take a pattern of fits file names and stacks the headers
+    Take a list of fits file names and stacks the headers
     in a dict list. [{FILTER:V, EXPTIME:10}, {FILTER:R, EXPTIME:10}]
     It adds the full path filename.
     Can be sorted by a list of keywords, for example JD.
     '''
-    pattern = sorted(pattern)
+    from astropy.table import Table
 
-    log.info(f"Stacking {len(pattern)} in a table. It can take a while...")
-    heads = [ r.get_fits_header(f, fast=True) for f in pattern ]
-    for i,p in enumerate(pattern): 
-        heads[i]["FULLPATH"] = pattern[i] 
+    filenames = sorted(filenames)
+
+    log.info(f"Stacking {len(filenames)} in a table. It can take a while...")
+    heads = [ r.get_fits_header(f, fast=True) for f in filenames ]
+    for i,p in enumerate(filenames): 
+        heads[i]["FULLPATH"] = filenames[i] 
  
     tabled_heads = [ dict( [h["name"],h["value"]] for h in H.records() ) for H in heads ]
 
     log.info("Adding a FULLPATH keyword to retrieve the original file path...")
-    full_path = [ {'FULLPATH': f} for f in pattern ]
+    full_path = [ {'FULLPATH': f} for f in filenames ]
     tabled_heads = [{**u, **v} for u, v  in zip(tabled_heads, full_path)]
 
     table = Table(tabled_heads)
@@ -57,6 +88,7 @@ def group(table_dict, keys, show=None):
     values from a kist of keywords. Can show separated values.
     For example sort unique FILTER keywords and show corresponding JDs.
     '''
+    import itertools as it
 
     tab = table_dict
 
@@ -91,17 +123,18 @@ def group(table_dict, keys, show=None):
 
 
 class minidb():
+    from astropy.table import Table
 
-    def __init__(self, pattern):
-        pattern = sorted(pattern)
-        self.pattern = pattern
-        self.heads = [ r.get_fits_header(f, fast=True) for f in pattern ]
-        for i,p in enumerate(pattern): 
-            self.heads[i]["FULLPATH"] = pattern[i]  
+    def __init__(self, filenames):
+        filenames = sorted(filenames)
+        self.filenames = filenames
+        self.heads = [ r.get_fits_header(f, fast=True) for f in filenames ]
+        for i,p in enumerate(filenames): 
+            self.heads[i]["FULLPATH"] = filenames[i]  
         keys = self.heads[0].keys()
         values = [ [ h.get(k) for h in self.heads ] for k in keys ]
         dic = dict(zip(keys, values))
-        #dic["FULLPATH"] = pattern # adding filename
+        #dic["FULLPATH"] = filenames # adding filename
         self.dic = dic
         self.table = Table(dic) # original
         self.data = self.table
@@ -117,40 +150,10 @@ class minidb():
 
 
     def names_for(self, keys):
+        import numpy as np
+        
         print(self.data)
         self.names = np.array(self.data[keys]).tolist()
         #self.data = self.table[keys]
         return self.names
 
-
-class dfits():
-    '''
-    dfits | fitsort simple clone.
-    Uses fast fitsio method by default.
-    '''
-    def __init__(self, pattern, fast=False):
-        pattern = sorted(pattern)
-        self.pattern = pattern
-        log.info(f"dfits {len(pattern)} files. It can take some seconds.")
-        self.heads = [ r.get_fits_header(f, fast=fast) for f in pattern ]
-        for i,p in enumerate(pattern): 
-            self.heads[i]["FULLPATH"] = pattern[i]  
-        self.data = self.heads
-
-    def fitsort(self, keys):
-        ph = zip(self.pattern,self.heads)
-        results = [ (p,(tuple(h[k] for k in keys))) for p,h in ph ]
-        self.keys = keys
-        self.names = [ r[0] for r in results ]
-        self.values = [ r[1] for r in results ]
-        self.unique_values = set(self.values)
-        self.data = results
-        return self
-
-    def unique_names_for(self, value):
-        un = [ d[0] for d in self.data if d[1] == value ]
-        return un
-
-    def grep(self, value):
-        gr = [ d for d in self.data if d[1] == value ]
-        return gr

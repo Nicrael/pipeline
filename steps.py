@@ -1,22 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# from multiprocessing import Process
-# from pathlib import Path
-# import dfits
-
-#                  1               2            3                   4                 5           6
-# biases ------> MBIAS
-#        darks - MBIAS ->   darks_debiased
-#                           darks_debiased -> MDARK
-#        flats - MBIAS ->   flats_debiased
-#                           flats_debiased  - MDARK -->  flats_debiased_dedarked
-#                                                        flats_debiased_dedarked -> MFLAT
-#      objects - MBIAS -> objects_debiased
-#                         objects_debiased  - MDARK -> objects_debiased_dedarked
-#                                                      objects_debiased_dedarked  / MFLAT -> objects_reduc
-#
-
 #                  1               2            3                   4                 5           6
 # biases ------> MBIAS
 #        darks - MBIAS ->   darks_debiased -> MDARK
@@ -34,28 +18,17 @@
 # 6 objects_reduc       = divide(objects_debiased_dedarked, MFLAT)
 #
 
-####################################
-# shortcuts
-####################################
 
-from astropy import log
-import glob
-import numpy as np
-from astropy.time import Time
-
-from reduction import *
-import naming
-import fill_header
-from sorters import dfits
-
-#mask = oarpaf_mask(mbias, output_file=mout)
-#reg = oarpaf_mask_reg(mask, output_file=f'{prod}-MASK-{keys}{value}.reg')
-
-a = Time.now()
+# mask = mask(mbias, output_file=mout)
+# reg = mask_reg(mask, output_file=f'{prod}-MASK-{keys}{value}.reg')
 
 ##########################################
 # Data based
 ##########################################
+
+import glob
+from reduction import combine
+from sorters import dfits
 
 # MBIAS
 biases = glob.glob("gj3470/*/bias/*.fit*", recursive=True)
@@ -91,7 +64,9 @@ from reduction import master_bias, master_flat, correct_image, get_fits_header
 from naming import skeleton
 from sorters import dfits
 from fill_header import observatory, solver, init_observatory
+from photometry import apphot
 from astropy.io import ascii
+import numpy as np
 
 skeleton(date=True)
 
@@ -110,104 +85,20 @@ mflat = "arp.MFLAT.ccdxbin=2.filter=vacio+V3.fits"
 
 correct_image(objects, keys, mbias=mbias, mflat=mflat, new_header="Mexman")
 
-#solvituri = glob.glob("arp-data-2020-05-15T08:41:17/reduced/*fit*")
-
 solver("*CLEAN*fits")
 
 solved = sorted(glob.glob("arp-data-2020-05-15T12:59:46/solved/*CLEAN*.new")) 
-dates = [get_fits_header(f, fast=True)["MJD-OBS"] for f in solved] 
+datas = [get_fits_header(f, fast=True)["MJD-OBS"] for f in solved] 
 airmass = [get_fits_header(f, fast=True)["AIRMASS"] for f in solved] 
 tables = apphot(solved, r=6, r_in=15.5, r_out=25)
 tabellone = np.array([tables[k] for k in tables.keys() ])
-tabellone=np.insert(tabellone,  0, [dates, airmass], axis=1)
+tabellone=np.insert(tabellone,  0, [datas, airmass], axis=1)
 ascii.write( tabellone, "tabellone.txt", overwrite=True)
-
-
-
-##########################################
-# Generic2
-##########################################
-
-# INIT
-pattern = glob.glob("gj3470/*/*/*.fit*", recursive=True)
-db = minidb(pattern)
-
-
-keys = ["CCDXBIN"]
-mask = "bias"
-product = "MBIAS"
-combi(db, mask=mask, keys=keys, product=product)
-
-keys = ["CCDXBIN", "FILTER"]
-mask = "flat"
-product = "MFLAT"
-combi(db, mask=mask, keys=keys, product=product, normalize=True)
-
-
-
-
-####################################
-# All together
-####################################
-
-obj_all = glob.glob("gj3470/*/object/*.fit*", recursive=True)
-objects = dfits(obj_all).fitsort(['object']).unique_names_for(('GJ3470  ',))
-
-o = fill_header.init_observatory("Mexman")
-o.filename = objects[0]
-o.newhead()
-new_header = o.nh
-ooo = combine(objects[0], method='median',
-              mbias="MBIAS.fits.fz", mflat="MFLAT-V.fits.fz"  )
-
-name = naming.output_file(product="object")
-write_fits(ooo, output_file=name, header=new_header)
-
 
 
 ####################################
 # Main
 ####################################
-
-
-from astropy.time import Time
-from astropy import units as u
-from astropy.coordinates import SkyCoord, FK5, ICRS
-
-# FITS
-spm_ra = '8:00:26.29'     # penso il centro del campo, pixel 512
-spm_dec = '+15:20:10.84'  # penso il centro del campo, pixel 516
-# Scala in gradi: 0.000138 gradi per pixel.
-# Il target si trova ai pixel 430, 385
-# Differenza in pixel: -82,-131 → -0.0114,0.0182 gradi
-
-spm_jd = 2458829.827152778
-spm_equinox = 'J2019.9'
-
-spm = SkyCoord(ra=spm_ra,
-               dec=spm_dec,
-               obstime=Time(spm_jd, format="jd"),
-               frame="fk5",
-               equinox=spm_equinox,
-               unit=(u.hourangle, u.deg) )
-
-spm_2000 = spm.transform_to(FK5(equinox="J2000"))
-
-# SIMBAD
-gj = SkyCoord.from_name("GJ3470").fk5
-
-####################################
-# With mini db table
-####################################
-
-
-db = table(pattern)
-imagetyps = group(db, ["IMAGETYP", "FILTER"], "FULLPATH")
-
-for s in  imagetyps:
-    print(s, len(imagetyps[s]))
-
-
 
 
 def main():

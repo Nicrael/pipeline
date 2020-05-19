@@ -18,8 +18,9 @@ import json
 
 import naming
 
-# Our modules
+# Local modules
 import reduction as r
+
 
 class observatory():
 

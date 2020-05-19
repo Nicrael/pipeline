@@ -2,10 +2,86 @@
 # -*- coding: utf-8 -*-
 
 
+# from multiprocessing import Process
+# from pathlib import Path
+# import dfits
+
+#                  1               2            3                   4                 5           6
+# biases ------> MBIAS
+#        darks - MBIAS ->   darks_debiased
+#                           darks_debiased -> MDARK
+#        flats - MBIAS ->   flats_debiased
+#                           flats_debiased  - MDARK -->  flats_debiased_dedarked
+#                                                        flats_debiased_dedarked -> MFLAT
+#      objects - MBIAS -> objects_debiased
+#                         objects_debiased  - MDARK -> objects_debiased_dedarked
+#                                                      objects_debiased_dedarked  / MFLAT -> objects_reduc
+#
+
+####################################
+# shortcuts
+####################################
+
 
 ####################################
 # Graveyard of dead functions
 ####################################
+
+def mask(data, sigma=3, output_file=None, header=None):
+    '''
+    Create a bad pixel mask
+    '''
+    mask = sigma_clip(data, masked=True).mask.astype(int)
+    if output_file:
+        write_fits(mask, output_file, header=header)
+
+    return mask
+
+
+def mask_reg(data, sigma=3, output_file=None):
+    '''
+    Create a bad pixel region table
+    '''
+
+    y,x = np.where(data == True)
+    p = np.repeat("point ", y.size)
+    t = [p, x+1,y+1]
+
+    table = Table(t, names=['# ','## ','###']) # bleah
+
+    if output_file:
+        ascii.write(table, output_file, overwrite=True)
+
+    return table
+
+
+def load(filenames):
+    '''
+    Return the datas of several filenames in a cube .
+    '''
+    sort(filenames)
+    datas = np.array([ get_fits_data(f) for f in filenames ])
+
+    # Collapsing array of cubes (3,30,100,100) -> (90,100,100)
+    if len(datas.shape) > 3 :
+        datas = datas.reshape(-1, *datas.shape[-2:])
+
+    return datas.squeeze()
+
+def is_keyval_in_header(head, key, val):
+    '''
+    Alternative for 'x' in header and header['x'] == 'y'
+    '''
+    return key in head and head[key] == val
+
+
+def is_keyval_in_file(filename, key, val):
+    '''
+    Alternative for 'x' in fits and fits['x'] == 'y'
+    '''
+    header = get_fits_header(filename)
+    return is_keyval_in_header(header, keyword, value)
+
 
 def generic2(db, product=None, keys=None, mask=None,
              mbias=None, normalize=False):
@@ -427,69 +503,144 @@ def ccdproc_mbias(pattern, method='median', output_file=None, header=None):
     return combined_data
 
 
-# values1 = ['U', 'B', 'V']
-# values2 = [1, 2]
-# list(itertools.product(values1, values2))
-# [('U', 1), ('U', 2), ('B', 1), ('B', 2), ('V', 1), ('V', 2)]
+values1 = ['U', 'B', 'V']
+values2 = [1, 2]
+list(itertools.product(values1, values2))
+[('U', 1), ('U', 2), ('B', 1), ('B', 2), ('V', 1), ('V', 2)]
 
-# pattern
-# heads = [ get_fits_header(f) for f in pattern ]
-# sub_heads = is_keyval_in_header(heads, 'filter', 'vacio + B3')
-# frames = [ frame(f) for f in pattern if is_keyval_in_file(f, 'filter', 'vacio + B3') ]
-# datas = [ get_fits_data(f) for f in pattern ]
-# ccds =  [ ccdp.CCDData(d, unit='adu') for d in datas ]
+pattern
+heads = [ get_fits_header(f) for f in pattern ]
+sub_heads = is_keyval_in_header(heads, 'filter', 'vacio + B3')
+frames = [ frame(f) for f in pattern if is_keyval_in_file(f, 'filter', 'vacio + B3') ]
+datas = [ get_fits_data(f) for f in pattern ]
+ccds =  [ ccdp.CCDData(d, unit='adu') for d in datas ]
 
-# pattern
-# all_frames = frame_list(pattern)
-# frames = [ f for f in all_frames if f.head['filter']  == 'vacio + B3']
-# files = [ f.name for f in frames]
-# heads = [ f.head for f in frames]
-# datas = [ f.data for f in frames]
-# ccds =  [ ccdp.CCDData(d, unit='adu') for d in datas ]
-# ccds = [ ccdp.CCDData(get_fits_data(f.name), unit='adu') for f in frames ]
+pattern
+all_frames = frame_list(pattern)
+frames = [ f for f in all_frames if f.head['filter']  == 'vacio + B3']
+files = [ f.name for f in frames]
+heads = [ f.head for f in frames]
+datas = [ f.data for f in frames]
+ccds =  [ ccdp.CCDData(d, unit='adu') for d in datas ]
+ccds = [ ccdp.CCDData(get_fits_data(f.name), unit='adu') for f in frames ]
 
-# path = Path('/home/dail/first/second/third')
-# path.mkdir(parents=True, exist_ok=True)
+path = Path('/home/dail/first/second/third')
+path.mkdir(parents=True, exist_ok=True)
 
-# a = [1, 2, 3]
-# b = [4, 5, 6]
-# [list(zip(a, p)) for p in permutations(b)]
-# [[(1, 4), (2, 5), (3, 6)],
-#   [(1, 4), (2, 6), (3, 5)],
-#   [(1, 5), (2, 4), (3, 6)],
-#   [(1, 5), (2, 6), (3, 4)],
-#   [(1, 6), (2, 4), (3, 5)],
-#   [(1, 6), (2, 5), (3, 4)]]
+a = [1, 2, 3]
+b = [4, 5, 6]
+[list(zip(a, p)) for p in permutations(b)]
+[[(1, 4), (2, 5), (3, 6)],
+  [(1, 4), (2, 6), (3, 5)],
+  [(1, 5), (2, 4), (3, 6)],
+  [(1, 5), (2, 6), (3, 4)],
+  [(1, 6), (2, 4), (3, 5)],
+  [(1, 6), (2, 5), (3, 4)]]
 
-# a = ['U', 'B', 'V']
-# b = [1, 2]
-# list(itertools.product(a, b))
-# [('U', 1), ('U', 2), ('B', 1), ('B', 2), ('V', 1), ('V', 2)]
-
-
-# a = Time.now()
-# b = Time.now()
-# c = b.unix - a.unix
+a = ['U', 'B', 'V']
+b = [1, 2]
+list(itertools.product(a, b))
+[('U', 1), ('U', 2), ('B', 1), ('B', 2), ('V', 1), ('V', 2)]
 
 
-#     pattern = glob.glob("gj3470/*/flat/*.fit*", recursive=True)
-#     heads = [ r.get_fits_header(i) for i in pattern ]
+a = Time.now()
+b = Time.now()
+c = b.unix - a.unix
 
-#     key = 'FILTER'
-#     values = { h[key] for h in heads } # distinct values
 
-#     for value in values:
-#         a = Time.now()
+    pattern = glob.glob("gj3470/*/flat/*.fit*", recursive=True)
+    heads = [ r.get_fits_header(i) for i in pattern ]
 
-#         names = { p for p,h in zip(pattern, heads) if h[key] == value }
-#         data = [r.get_fits_data(d) for d in names ]
+    key = 'FILTER'
+    values = { h[key] for h in heads } # distinct values
 
-#         data_norm = [ d/np.mean(d) for d in data ]
-#         del data
-#         dmaster = np.median(data_norm, axis=2)
-#         del data_norm
+    for value in values:
+        a = Time.now()
 
-#         print(f'{key} {value} -> {len(names)} elements.')
-#         print(f'Done in {Time.now().unix - a.unix :.1f}s')
+        names = { p for p,h in zip(pattern, heads) if h[key] == value }
+        data = [r.get_fits_data(d) for d in names ]
 
-#     print(f'All done in {Time.now().unix - a.unix :.1f}s')
+        data_norm = [ d/np.mean(d) for d in data ]
+        del data
+        dmaster = np.median(data_norm, axis=2)
+        del data_norm
+
+        print(f'{key} {value} -> {len(names)} elements.')
+        print(f'Done in {Time.now().unix - a.unix :.1f}s')
+
+    print(f'All done in {Time.now().unix - a.unix :.1f}s')
+
+from astropy.time import Time
+from astropy import units as u
+from astropy.coordinates import SkyCoord, FK5, ICRS
+
+# FITS
+spm_ra = '8:00:26.29'     # penso il centro del campo, pixel 512
+spm_dec = '+15:20:10.84'  # penso il centro del campo, pixel 516
+# Scala in gradi: 0.000138 gradi per pixel.
+# Il target si trova ai pixel 430, 385
+# Differenza in pixel: -82,-131 → -0.0114,0.0182 gradi
+
+spm_jd = 2458829.827152778
+spm_equinox = 'J2019.9'
+
+spm = SkyCoord(ra=spm_ra,
+               dec=spm_dec,
+               obstime=Time(spm_jd, format="jd"),
+               frame="fk5",
+               equinox=spm_equinox,
+               unit=(u.hourangle, u.deg) )
+
+spm_2000 = spm.transform_to(FK5(equinox="J2000"))
+
+# SIMBAD
+gj = SkyCoord.from_name("GJ3470").fk5
+
+##########################################
+# Generic2
+##########################################
+
+# INIT
+pattern = "gj3470/*/*/*.fit*"
+filenames = glob.glob(pattern, recursive=True)
+db = minidb(filenames)
+
+
+keys = ["CCDXBIN"]
+mask = "bias"
+product = "MBIAS"
+combi(db, mask=mask, keys=keys, product=product)
+
+keys = ["CCDXBIN", "FILTER"]
+mask = "flat"
+product = "MFLAT"
+combi(db, mask=mask, keys=keys, product=product, normalize=True)
+
+
+####################################
+# All together
+####################################
+
+obj_all = glob.glob("gj3470/*/object/*.fit*", recursive=True)
+objects = dfits(obj_all).fitsort(['object']).unique_names_for(('GJ3470  ',))
+
+o = fill_header.init_observatory("Mexman")
+o.filename = objects[0]
+o.newhead()
+new_header = o.nh
+ooo = combine(objects[0], method='median',
+              mbias="MBIAS.fits.fz", mflat="MFLAT-V.fits.fz"  )
+
+name = naming.output_file(product="object")
+write_fits(ooo, output_file=name, header=new_header)
+
+####################################
+# With mini db table
+####################################
+
+
+db = table(filenames)
+imagetyps = group(db, ["IMAGETYP", "FILTER"], "FULLPATH")
+
+for s in  imagetyps:
+    print(s, len(imagetyps[s]))
