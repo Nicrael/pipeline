@@ -11,6 +11,7 @@ from astropy.time import Time
 from astropy.wcs import WCS
 from astroquery.mast import Catalogs
 from photutils import SkyCircularAperture, SkyCircularAnnulus, aperture_photometry
+from photutils import DAOStarFinder
 from photutils import make_source_mask
 import astropy.units as u
 import cv2
