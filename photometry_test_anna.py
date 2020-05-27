@@ -11,6 +11,7 @@ from astropy.time import Time
 from astropy.wcs import WCS
 from astroquery.mast import Catalogs
 from photutils import SkyCircularAperture, SkyCircularAnnulus, aperture_photometry
+from photutils import DAOStarFinder
 from photutils import make_source_mask
 import astropy.units as u
 import cv2
@@ -20,25 +21,25 @@ import numpy as np
 from fits import get_fits_header, get_fits_data
 
 
-def detect_sources(image):                                                                                                                        
-    ''' By Anna Marini                                                                                                                            
-    Extract the light sources from the image                                                                                                      
-    '''                                                                                                                                           
-    # threshold = detect_threshold(image, nsigma=2.)                                                                                              
-    # sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.                                                                                           
-    # kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)                                                                                        
-    # kernel.normalize()                                                                                                                          
-    if isinstance(image,str):                                                                                                                     
-        image = get_fits_data(image)                                                                                                              
-    #print(data.shape)                                                                                                                            
-    mask = make_source_mask(image, nsigma=2, npixels=5, dilate_size=11)                                                                           
-    mean,median,std = sigma_clipped_stats(image, sigma=3, mask=mask)                                                                              
-    daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)                                                                                           
-    sources = daofind(image - median)                                                                                                             
-    # Pixel coordinates of the sources                                                                                                            
-    x = np.array(sources['xcentroid'])                                                                                                            
-    y = np.array(sources['ycentroid'])                                                                                                            
-    return x,y     
+def detect_sources(image):
+    ''' By Anna Marini
+    Extract the light sources from the image
+    '''
+    # threshold = detect_threshold(image, nsigma=2.)
+    # sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
+    # kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
+    # kernel.normalize()
+    if isinstance(image,str):
+        image = get_fits_data(image)
+    #print(data.shape)
+    mask = make_source_mask(image, nsigma=2, npixels=5, dilate_size=11)
+    mean,median,std = sigma_clipped_stats(image, sigma=3, mask=mask)
+    daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
+    sources = daofind(image - median)
+    # Pixel coordinates of the sources
+    x = np.array(sources['xcentroid'])
+    y = np.array(sources['ycentroid'])
+    return x,y
 
 
 def detect_donuts(filename, template):

@@ -29,7 +29,11 @@ def detect_sources(image):
     # sigma = 3.0 * gaussian_fwhm_to_sigma  # FWHM = 3.
     # kernel = Gaussian2DKernel(sigma, x_size=3, y_size=3)
     # kernel.normalize()
-    mask = make_source_mask(data, nsigma=2, npixels=5, dilate_size=11)
+
+    if isinstance(image,str):
+        image = get_fits_data(image)
+
+    mask = make_source_mask(image, nsigma=2, npixels=5, dilate_size=11)
     mean,median,std = sigma_clipped_stats(image, sigma=3, mask=mask)
     daofind = DAOStarFinder(fwhm=3.0, threshold=5.*std)
     sources = daofind(image - median)
