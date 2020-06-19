@@ -69,6 +69,7 @@ from naming import skeleton
 from sorters import dfits
 from fill_header import observatory, solver, init_observatory
 from photometry import apphot
+import glob
 
 skeleton(date=True)
 

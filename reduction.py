@@ -15,15 +15,17 @@ from naming import output_file, hist
 
 
 def master_bias(filenames, keys=[]):
-    generic(filenames, keys=keys, method="median", product="MBIAS")
+    generic(filenames, keys=keys, min_val=0, max_val=2000,
+            method="median", product="MBIAS")
 
 def master_dark(filenames, keys=[], mbias=None):
-    generic(filenames, keys=keys, method="median", product="MDARK",
-            mbias=mbias)
+    generic(filenames, keys=keys, min_val=0, max_val=2000,
+            method="median", product="MDARK", mbias=mbias)
 
 def master_flat(filenames, keys=[], mbias=None, mdark=None):
-    generic(filenames, keys=keys, method="median", product="MFLAT",
-            mbias=mbias, mdark=mdark, normalize=True)
+    generic(filenames, keys=keys, min_val=10000, max_val=55000,
+            method="median", product="MFLAT", mbias=mbias,
+            mdark=mdark, normalize=True)
 
 def correct_image(filenames, keys=[], mbias=None, mdark=None, mflat=None,
                   method='slice', new_header=False):
@@ -32,7 +34,7 @@ def correct_image(filenames, keys=[], mbias=None, mdark=None, mflat=None,
 
 def generic(filenames, keys=[], normalize=False, method=None,
             mbias=None, mdark=None, mflat=None, product=None,
-            new_header=False):
+            new_header=False, min_val=0, max_val=65535):
 
     log.info(f'fitsort {len(filenames)} filenames per {keys}')
 
@@ -52,6 +54,7 @@ def generic(filenames, keys=[], normalize=False, method=None,
 
                 data = get_fits_data(filename)
                 output = combine(data, normalize=normalize,
+                                 min_val=min_val, max_val=max_val,
                                  mbias=mbias, mdark=mdark, mflat=mflat)
 
                 header = o.newhead(heads[i]) if new_header else heads[i]
@@ -62,7 +65,8 @@ def generic(filenames, keys=[], normalize=False, method=None,
         # Combine and save acting on a data cube
         else:
             datas = np.array([ get_fits_data(f) for f in filenames ])
-            output = combine(datas, normalize=normalize, method=method,
+            output = combine(datas, normalize=normalize, min_val=min_val,
+                             max_val=max_val, method=method,
                              mbias=mbias, mdark=mdark, mflat=mflat)
 
             header = o.newhead(header=heads[0]) if new_header else heads[0]
@@ -81,16 +85,34 @@ def closing(keys, value, product, output, counter=False, header=False):
     write_fits(output, outfile, header=header, fast=False)
 
 
-def combine(images, normalize=False, method=None, precision='float32',
-            mbias=None, mdark=None, mflat=None, mask=False):
-    #a = Time.now()
+def counts_ok(data, size=100, min_val=0, max_val=65535):
+    '''By Anna Marini.
+    Divide the frame in strips of a given size.
+    Return False only if the average of a strip is not between min and max_val.    
+    '''
+    data_split = np.array_split(data, size)
+    data_split_avg = [np.mean(arr) for arr in data_split]    
+    is_good = True
+    for avg in data_split_avg:
+        if not min_val < avg < max_val:
+            log.warning(f'Saturated or non linear: {avg}')
+            is_good = False
+            break
+    return(is_good)
 
+
+def combine(images, normalize=False, method=None, precision='float32',
+            mbias=None, mdark=None, mflat=None, mask=False, min_val=0, max_val=65535):
+    #a = Time.now()
+     
     # Datas from pattern    
     if isinstance(images, str): images = [images]
     if isinstance(images[0], str):
         datas = np.array([get_fits_data(i) for i in images ])
     else:
         datas = images
+    # Check counts 
+    datas = np.array([d for d in datas if counts_ok(d, min_val=min_val, max_val=max_val)])
 
     # Master datas from filename
     if isinstance(mbias, str): mbias = get_fits_data(mbias)

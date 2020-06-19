@@ -43,18 +43,19 @@ def detect_sources(image):
     return x,y
 
 
+def rescale(array):
+    '''Take an array.  Rescale min to 0, max to 255, then change dtype,
+    as opencv loves uint8 data type.  Returns the rescaled uint8 array.
+    '''
+    array -= np.min(array)
+    array = array/(np.max(array)/255.0)
+    return array.astype(np.uint8)
+
+
 def detect_donuts(filename, template):
     '''
     Use opencv to find centroids of highly defocused images template matching.
     '''
-
-    def rescale(array):
-        '''Takes an array.  Rescale min to 0, max to 255, then change dtype,
-        as opencv loves uint8 data type.  Returns the rescaled uint8 array.
-        '''
-        array -= np.min(array)
-        array = array/(np.max(array)/255.0)
-        return array.astype(np.uint8)
 
     img = rescale(get_fits_data(filename))
     tpl = rescale(get_fits_data(template))
@@ -156,7 +157,7 @@ def apphot(filenames, reference=10, display=False, r=False, r_in=False, r_out=Fa
 
     if display:
         import pyds9
-        d=pyds9.DS9("ds9")
+        d = pyds9.DS9("ds9")
         
     for filename in filenames:
         header = get_fits_header(filename)
@@ -181,15 +182,15 @@ def apphot(filenames, reference=10, display=False, r=False, r_in=False, r_out=Fa
             #     d.set("regions", circ)
             #     d.set("region", f"text {p[0]} {p[1]} "+"{"+str(i)+"}")
                 
-            for i,a in enumerate(apers[0].to_pixel(wcs)) :
-                circ = f'circle({a.positions[0]}, {a.positions[1]}, {a.r})'
+            for i,aper in enumerate(apers[0].to_pixel(wcs)) :
+                circ = f'circle({aper.positions[0]}, {aper.positions[1]}, {aper.r})'
                 d.set("regions", circ)
-                d.set("region", f"text {a.positions[0]}, {a.positions[1]} "+"{"+str(i)+"}")
+                d.set("region", f"text {aper.positions[0]}, {aper.positions[1]} "+"{"+str(i)+"}")
             
             for a in apers[1].to_pixel(wcs):
-                circ = f'circle({a.positions[0]}, {a.positions[1]}, {a.r_in})'
+                circ = f'circle({aper.positions[0]}, {aper.positions[1]}, {aper.r_in})'
                 d.set("regions", circ)
-                circ = f'circle({a.positions[0]}, {a.positions[1]}, {a.r_out})'
+                circ = f'circle({aper.positions[0]}, {aper.positions[1]}, {aper.r_out})'
                 d.set("regions", circ)
         
         tables.add_column(phot_table["residual_aperture_sum"], rename_duplicate=True)
