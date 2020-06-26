@@ -26,8 +26,8 @@
 
         "exptime" : "EXPTIME",
         "binning" : null,
-        "gain"    : 1.413,
-        "ron"     : 6.590,
+        "gain"    : null
+        "ron"     : null
         "scale"   : 0.39,
         "comment" : ""
     },
