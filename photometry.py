@@ -146,7 +146,7 @@ def do_photometry(data, apers, wcs, obstime=False):
     return(phot_table)
 
 
-def apphot(filenames, reference=10, display=False, r=False, r_in=False, r_out=False):
+def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=False):
 
     filenames = sorted(filenames)
 
