@@ -3,7 +3,7 @@
     "Mexman" : {
         "lon" : -115.4661,
         "lat" : 31.0292,
-        "alt" :2790,
+        "alt" : 2790,
         "obstime" : "JD",
         "ra"      : "RA",
         "dec"     : "DEC",

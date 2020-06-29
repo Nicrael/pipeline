@@ -100,7 +100,6 @@ def counts_ok(data, size=100, min_val=0, max_val=65535):
             break
     return(is_good)
 
-
 def combine(images, normalize=False, method=None, precision='float32',
             mbias=None, mdark=None, mflat=None, mask=False, min_val=0, max_val=65535):
     #a = Time.now()

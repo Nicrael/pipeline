@@ -136,6 +136,12 @@ def do_photometry(data, apers, wcs, obstime=False):
     
     phot_table['residual_aperture_sum'] = final_sum
     phot_table['mjd-obs'] = obstime
+
+    # Calculate errorbar
+    # gain,ron = funzione che finisce con return gain,ron
+    # if gain and ron:
+    # signal_noise(pixar, pixan, gain, ron)
+    # aggiungi colonna con l'errore.
     
     return(phot_table)
 
