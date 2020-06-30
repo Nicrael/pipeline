@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # System modules
+import json
 from astropy import log
 from astropy.coordinates import SkyCoord
 from astropy.io import ascii
@@ -20,6 +21,19 @@ import numpy as np
 # Local modules
 from fits import get_fits_header, get_fits_data
 
+def ron_gain(my_instr="Mexman"):
+    with open('instruments.json') as jfile:
+        instrument_dict = json.load(jfile)
+
+    instrument = instrument_dict[my_instr]
+    gain = instrument['gain']
+    RON = instrument['ron']
+    if gain is None:
+        log.warning(f'Gain not found for {instrument}')
+    if RON is None:
+        log.warning(f'Ron not found for {instrument}')
+        
+    return(RON, gain)
 
 def detect_sources(image):
     ''' By Anna Marini
@@ -136,6 +150,14 @@ def do_photometry(data, apers, wcs, obstime=False):
     
     phot_table['residual_aperture_sum'] = final_sum
     phot_table['mjd-obs'] = obstime
+    
+    gain, ron = ron_gain()
+
+    for n in phot_table['residual_aperture_sum']:
+        if gain and ron:
+             phot_table['S/N'] = (phot_table['residual_aperture_sum'] )/[(phot_table['residual_aperture_sum']
+                                                             + bkg_mean * pixar.area + ron
+                                                             + (gain/2)**2)**1/2]
 
     # Calculate errorbar
     # gain,ron = funzione che finisce con return gain,ron
