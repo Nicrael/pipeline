@@ -23,7 +23,7 @@ from fits import get_fits_header, get_fits_data
 from fill_header import init_observatory 
 
 def ron_gain_dark(my_instr="Mexman"):
-    observatory = init_observatory()[0]
+    observatory = init_observatory(my_instr)[0]
     instrument = observatory[my_instr]
     gain = instrument['gain']
     ron = instrument['ron']
@@ -160,7 +160,7 @@ def do_photometry(data, apers, wcs, obstime=False):
            phot_table['S/N'] = (phot_table['residual_aperture_sum'] )/np.sqrt(phot_table['residual_aperture_sum']
                                                              + bkg_mean * pixar.area + ron
                                                              + (gain/2)**2 + dark_current)
-        elif gain and ron:
+       elif gain and ron:
             log.warning('Missing Dark Current value. Exstimation done neglecting his effect')
             phot_table['S/N'] = (phot_table['residual_aperture_sum'] )/np.sqrt(phot_table['residual_aperture_sum']
                                                              + bkg_mean * pixar.area + ron
