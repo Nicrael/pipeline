@@ -24,7 +24,7 @@ from fill_header import init_observatory
 
 def ron_gain_dark(my_instr="Mexman"):
     instrument = init_observatory(my_instr)
-    gain = instrument['gain'] or 0
+    gain = instrument['gain'] or 1
     ron = instrument['ron'] or 0
     dark_current = instrument['dark_current'] or 0
     log.info(f"Gain: {gain}, RON: {ron}, Dark current: {dark_current}")
@@ -155,7 +155,8 @@ def do_photometry(data, apers, wcs, obstime=False):
                                                 + ron
                                                 + (gain/2)**2
                                                 + dark_current)
-                    
+    #phot_table['poisson_err'] = np.sqrt(final_sum)
+    
     # Calculate errorbar
     # gain,ron = funzione che finisce con return gain,ron
     # if gain and ron:
