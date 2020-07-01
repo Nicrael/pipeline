@@ -160,7 +160,7 @@ def do_photometry(data, apers, wcs, obstime=False):
            phot_table['S/N'] = (phot_table['residual_aperture_sum'] )/np.sqrt(phot_table['residual_aperture_sum']
                                                              + bkg_mean * pixar.area + ron
                                                              + (gain/2)**2 + dark_current)
-       elif gain and ron:
+        elif gain and ron:
             log.warning('Missing Dark Current value. Exstimation done neglecting his effect')
             phot_table['S/N'] = (phot_table['residual_aperture_sum'] )/np.sqrt(phot_table['residual_aperture_sum']
                                                              + bkg_mean * pixar.area + ron
