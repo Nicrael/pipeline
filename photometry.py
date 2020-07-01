@@ -20,20 +20,22 @@ import numpy as np
 
 # Local modules
 from fits import get_fits_header, get_fits_data
+from fill_header import init_observatory 
 
-def ron_gain(my_instr="Mexman"):
-    with open('instruments.json') as jfile:
-        instrument_dict = json.load(jfile)
-
-    instrument = instrument_dict[my_instr]
+def ron_gain_dark(my_instr="Mexman"):
+    observatory = init_observatory()[0]
+    instrument = observatory[my_instr]
     gain = instrument['gain']
-    RON = instrument['ron']
+    ron = instrument['ron']
+    dark_current = instrument['dark_current']
     if gain is None:
         log.warning(f'Gain not found for {instrument}')
-    if RON is None:
+    if ron is None:
         log.warning(f'Ron not found for {instrument}')
+    if dark_current is None:
+        log.warning(f'Dark Current not found for {instrument}')
         
-    return(RON, gain)
+    return(ron, gain, dark_current)
 
 def detect_sources(image):
     ''' By Anna Marini
@@ -151,14 +153,23 @@ def do_photometry(data, apers, wcs, obstime=False):
     phot_table['residual_aperture_sum'] = final_sum
     phot_table['mjd-obs'] = obstime
     
-    gain, ron = ron_gain()
+      ron, gain, dark_current = ron_gain_dark()
 
     for n in phot_table['residual_aperture_sum']:
-        if gain and ron:
-             phot_table['S/N'] = (phot_table['residual_aperture_sum'] )/[(phot_table['residual_aperture_sum']
+        if gain and ron and dark_current:
+           phot_table['S/N'] = (phot_table['residual_aperture_sum'] )/np.sqrt(phot_table['residual_aperture_sum']
                                                              + bkg_mean * pixar.area + ron
-                                                             + (gain/2)**2)**1/2]
-
+                                                             + (gain/2)**2 + dark_current)
+        elif gain and ron:
+            log.warning('Missing Dark Current value. Exstimation done neglecting his effect')
+            phot_table['S/N'] = (phot_table['residual_aperture_sum'] )/np.sqrt(phot_table['residual_aperture_sum']
+                                                             + bkg_mean * pixar.area + ron
+                                                             + (gain/2)**2)
+        else:
+           log.warning('Missing Gain, Ron and Dark Current Values! Exstimating S/N = Source Rate/(Source Rate + Background)')
+           phot_table['S/N'] =  (phot_table['residual_aperture_sum'])/np.sqrt(phot_table['residual_aperture_sum']
+                                                             + bkg_mean * pixar.area) 
+                    
     # Calculate errorbar
     # gain,ron = funzione che finisce con return gain,ron
     # if gain and ron:
