@@ -12,6 +12,7 @@
         "binning" : ["CCDXBIN", "CCDYBIN"],
         "gain"    : 3.82,
         "ron"     : 1.8,
+        "dark_current" : null,
         "scale"   : 0.264,
         "comment" : ""
     },
@@ -28,6 +29,7 @@
         "binning" : null,
         "gain"    : null,
         "ron"     : null,
+        "dark_current" : null,
         "scale"   : 0.39,
         "comment" : ""
     },
@@ -44,6 +46,7 @@
         "binning" : ["XBINNING", "YBINNING"],
         "gain"    : "EGAIN",
         "ron"     : 11,
+        "dark_current" : null,
         "scale"   : 0.22,
         "comment" : ""
     },
