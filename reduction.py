@@ -42,7 +42,9 @@ def generic(filenames, keys=[], normalize=False, method=None,
     sortlist = df.fitsort(keys)
     heads = df.heads
 
-    if new_header: o = init_observatory(new_header)
+    if new_header:
+        instrument = init_observatory(new_header)
+        o = observatory(**instrument)
 
     for value in sortlist.unique_values :
         filenames = sortlist.unique_names_for(value)

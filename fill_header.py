@@ -380,5 +380,5 @@ def init_observatory(instrument="Mexman"):
         instruments = json.load(jfile)
 
     instrument = instruments[instrument]
-    return instruments, observatory(**instrument)
+    return instrument #s, observatory(**instrument)
 

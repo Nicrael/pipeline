@@ -23,22 +23,13 @@ from fits import get_fits_header, get_fits_data
 from fill_header import init_observatory 
 
 def ron_gain_dark(my_instr="Mexman"):
-    observatory = init_observatory(instrument=my_instr)[0]
-    instrument = observatory[my_instr]
-    gain = instrument['gain']
-    ron = instrument['ron']
-    dark_current = instrument['dark_current']
-    if gain is None:
-        gain = 0
-        log.warning(f'Gain not found for {instrument}')
-    if ron is None:
-        ron = 0
-        log.warning(f'Ron not found for {instrument}')
-    if dark_current is None:
-        dark_current = 0
-        log.warning(f'Dark Current not found for {instrument}')
+    instrument = init_observatory(my_instr)
+    gain = instrument['gain'] or 0
+    ron = instrument['ron'] or 0
+    dark_current = instrument['dark_current'] or 0
+    log.info(f"Gain: {gain}, RON: {ron}, Dark current: {dark_current}")
         
-    return(ron, gain, dark_current)
+    return ron, gain, dark_current
 
 def detect_sources(image):
     ''' By Anna Marini
@@ -156,14 +147,14 @@ def do_photometry(data, apers, wcs, obstime=False):
     phot_table['residual_aperture_sum'] = final_sum
     phot_table['mjd-obs'] = obstime
     
-      ron, gain, dark_current = ron_gain_dark()
+    ron,gain,dark_current = ron_gain_dark()
 
     for n in phot_table['residual_aperture_sum']:
-           phot_table['S/N'] = final_sum / np.sqrt(final_sum
-                                                   + bkg_mean * pixar.area
-                                                   + ron
-                                                   + (gain/2)**2
-                                                   + dark_current)
+        phot_table['S/N'] = final_sum / np.sqrt(final_sum
+                                                + bkg_mean * pixar.area
+                                                + ron
+                                                + (gain/2)**2
+                                                + dark_current)
                     
     # Calculate errorbar
     # gain,ron = funzione che finisce con return gain,ron
