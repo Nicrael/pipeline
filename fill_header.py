@@ -373,7 +373,7 @@ def formatter(val, form):
     return value
 
 
-def init_observatory(instrument):
+def init_observatory(instrument="Mexman"):
     log.info(f'Loading {instrument}')
 
     with open('./instruments.json') as jfile:
@@ -381,3 +381,4 @@ def init_observatory(instrument):
 
     instrument = instruments[instrument]
     return instruments, observatory(**instrument)
+

@@ -23,16 +23,19 @@ from fits import get_fits_header, get_fits_data
 from fill_header import init_observatory 
 
 def ron_gain_dark(my_instr="Mexman"):
-    observatory = init_observatory(my_instr)[0]
+    observatory = init_observatory(instrument=my_instr)[0]
     instrument = observatory[my_instr]
     gain = instrument['gain']
     ron = instrument['ron']
     dark_current = instrument['dark_current']
     if gain is None:
+        gain = 0
         log.warning(f'Gain not found for {instrument}')
     if ron is None:
+        ron = 0
         log.warning(f'Ron not found for {instrument}')
     if dark_current is None:
+        dark_current = 0
         log.warning(f'Dark Current not found for {instrument}')
         
     return(ron, gain, dark_current)
@@ -156,19 +159,11 @@ def do_photometry(data, apers, wcs, obstime=False):
       ron, gain, dark_current = ron_gain_dark()
 
     for n in phot_table['residual_aperture_sum']:
-        if gain and ron and dark_current:
-           phot_table['S/N'] = (phot_table['residual_aperture_sum'] )/np.sqrt(phot_table['residual_aperture_sum']
-                                                             + bkg_mean * pixar.area + ron
-                                                             + (gain/2)**2 + dark_current)
-        elif gain and ron:
-            log.warning('Missing Dark Current value. Exstimation done neglecting his effect')
-            phot_table['S/N'] = (phot_table['residual_aperture_sum'] )/np.sqrt(phot_table['residual_aperture_sum']
-                                                             + bkg_mean * pixar.area + ron
-                                                             + (gain/2)**2)
-        else:
-           log.warning('Missing Gain, Ron and Dark Current Values! Exstimating S/N = Source Rate/(Source Rate + Background)')
-           phot_table['S/N'] =  (phot_table['residual_aperture_sum'])/np.sqrt(phot_table['residual_aperture_sum']
-                                                             + bkg_mean * pixar.area) 
+           phot_table['S/N'] = final_sum / np.sqrt(final_sum
+                                                   + bkg_mean * pixar.area
+                                                   + ron
+                                                   + (gain/2)**2
+                                                   + dark_current)
                     
     # Calculate errorbar
     # gain,ron = funzione che finisce con return gain,ron
