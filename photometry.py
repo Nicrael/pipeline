@@ -17,6 +17,7 @@ from photutils import make_source_mask
 import astropy.units as u
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Local modules
 from fits import get_fits_header, get_fits_data
@@ -223,4 +224,28 @@ def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=Fal
             
         log.info(f"Done {filename}")
 
-    return tables
+        return tables, phot_table
+
+def plot(filenames):
+    tab = apphot(filenames, r=6, r_in=15.5, r_out=25)
+    tables = tab[0]
+    phot_table = tab[1]
+
+    datas = [get_fits_header(f, fast=True)["MJD-OBS"] for f in filenames]
+    tabellone = np.array([tables[k] for k in tables.keys() ])
+    tabellone = np.insert(tabellone,  0, [datas], axis=1)
+    t = tabellone[:,:1]
+    flux = tabellone[:,1:115]
+    ones = np.ones([115,26])
+    flux_err = phot_table['S/N']*ones
+    fig,ax = plt.subplots()
+    n = list(range(26))
+    for number in n:
+        ax.errorbar(t,flux[:,number],xerr= 0, yerr = flux_err[:,number],
+                    fmt= ' ',
+                    elinewidth = 3.5,
+                    marker = 'o',markersize = 4)
+
+    return(plt.show())
+
+
