@@ -228,8 +228,8 @@ def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=Fal
 
 def plot(filenames):
     tab = apphot(filenames, r=6, r_in=15.5, r_out=25)
-    tables = tab[0]
-    phot_table = tab[1]
+    tables = tab[0] #from do_photometry
+    phot_table = tab[1] #from apphot
     sources_number = len(tables)
     files_number =  len(tables[0])
 
