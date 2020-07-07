@@ -230,21 +230,23 @@ def plot(filenames):
     tab = apphot(filenames, r=6, r_in=15.5, r_out=25)
     tables = tab[0]
     phot_table = tab[1]
+    sources_number = len(tables)
+    files_number =  len(tables[0])
 
     datas = [get_fits_header(f, fast=True)["MJD-OBS"] for f in filenames]
     tabellone = np.array([tables[k] for k in tables.keys() ])
     tabellone = np.insert(tabellone,  0, [datas], axis=1)
     t = tabellone[:,:1]
-    flux = tabellone[:,1:115]
-    ones = np.ones([115,26])
+    flux = tabellone[:,1:files_number]
+    ones = np.ones([files_number,sources_number])
     flux_err = phot_table['S/N']*ones
     fig,ax = plt.subplots()
-    n = list(range(26))
+    n = list(range(sources_number))
     for number in n:
         ax.errorbar(t,flux[:,number],xerr= 0, yerr = flux_err[:,number],
                     fmt= ' ',
-                    elinewidth = 3.5,
-                    marker = 'o',markersize = 4)
+                    elinewidth = 2.5,
+                    marker = 'o',markersize = 2)
 
     return(plt.show())
 
