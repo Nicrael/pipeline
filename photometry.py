@@ -251,4 +251,5 @@ def plot(filenames):
     ax.errorbar(t,flux_1,yerr=err_1,fmt= ' ', elinewidth = 2,
                 ecolor = 'black', marker='o', markersize = 3.5)   
 
-
+    #add check for saturated sources
+    return(plt.show())
