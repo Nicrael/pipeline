@@ -239,6 +239,7 @@ def plot(filenames):
     ones = np.ones([files_number,sources_number])
     flux_err = phot_table['S/N']*ones
     
+    # All stars together
     fig1,ax = plt.subplots()
     n = list(range(sources_number))
     for number in n:
@@ -246,15 +247,18 @@ def plot(filenames):
                     fmt= ' ',
                     elinewidth = 2.5,
                     marker = 'o',markersize = 2)
+        
+    # Only one star, to evaluate errors weight
     fig2,ax = plt.subplots()
     flux_1 = flux[:,1]
     err_1 = flux_err[:,1]
     ax.errorbar(t,flux_1,yerr=err_1,fmt= ' ', elinewidth = 2,
                 ecolor = 'black', marker='o', markersize = 3.5) 
     
-    flux_div = flux/flux[25] 
+    flux_div = flux/flux[3] 
     err_div = np.sqrt(((flux_err/flux)**2))*flux_div
     
+    # Flux ratio 
     fig3,ax = plt.subplots()
     for number in n:
         ax.errorbar(t,flux_div[:,number],yerr = err_div[:,number], fmt=' ',
