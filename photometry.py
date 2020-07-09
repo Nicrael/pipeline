@@ -238,6 +238,7 @@ def plot(filenames):
     flux = tabellone[:,1:files_number]
     ones = np.ones([files_number,sources_number])
     flux_err = phot_table['S/N']*ones
+    
     fig1,ax = plt.subplots()
     n = list(range(sources_number))
     for number in n:
@@ -249,7 +250,16 @@ def plot(filenames):
     flux_1 = flux[:,1]
     err_1 = flux_err[:,1]
     ax.errorbar(t,flux_1,yerr=err_1,fmt= ' ', elinewidth = 2,
-                ecolor = 'black', marker='o', markersize = 3.5)   
+                ecolor = 'black', marker='o', markersize = 3.5) 
+    
+    flux_div = flux/flux[25] 
+    err_div = np.sqrt(((flux_err/flux)**2))*flux_div
+    
+    fig3,ax = plt.subplots()
+    for number in n:
+        ax.errorbar(t,flux_div[:,number],yerr = err_div[:,number], fmt=' ',
+                    elinewidth = 2, marker = 'o',
+                    markersize = 2.5)
 
     #add check for saturated sources
     return(plt.show())
