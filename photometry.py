@@ -247,23 +247,32 @@ def plot(filenames):
                     fmt= ' ',
                     elinewidth = 2.5,
                     marker = 'o',markersize = 2)
-        
-    # Only one star, to evaluate errors weight
-    fig2,ax = plt.subplots()
-    flux_1 = flux[:,1]
-    err_1 = flux_err[:,1]
-    ax.errorbar(t,flux_1,yerr=err_1,fmt= ' ', elinewidth = 2,
-                ecolor = 'black', marker='o', markersize = 3.5) 
+        ax.legend(('source 1', 'source 2','source 3','source 4','source 5',
+                  'source 6','source 7','source 8','source 9','source 10',
+                  'source 11','source 12','source 13','source 14','source 15',
+                  'source 16','source 17','source 18','source 19','source 20',
+                  'source 21','source 22','source 23','source 24','source 25',
+                  'source 26'))
+        ax.set_xlabel('Time (MJD)')
+        ax.set_ylabel('Flux')
     
     flux_div = flux/flux[3] 
     err_div = np.sqrt(((flux_err/flux)**2))*flux_div
     
     # Flux ratio 
-    fig3,ax = plt.subplots()
+    fig2,ax = plt.subplots()
     for number in n:
         ax.errorbar(t,flux_div[:,number],yerr = err_div[:,number], fmt=' ',
                     elinewidth = 2, marker = 'o',
                     markersize = 2.5)
+        ax.legend(('source 1', 'source 2','source 3','source 4','source 5',
+                  'source 6','source 7','source 8','source 9','source 10',
+                  'source 11','source 12','source 13','source 14','source 15',
+                  'source 16','source 17','source 18','source 19','source 20',
+                  'source 21','source 22','source 23','source 24','source 25',
+                  'source 26'))
+        ax.set_xlabel('Time (MJD)')
+        ax.set_ylabel('Flux Ratio')
 
     #add check for saturated sources
     return(plt.show())
