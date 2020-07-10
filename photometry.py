@@ -243,10 +243,10 @@ def plot(filenames):
     fig1,ax = plt.subplots()
     n = list(range(sources_number))
     for number in n:
-        ax.errorbar(t,flux[:,number],xerr= 0, yerr = flux_err[:,number],
+        ax.errorbar(t,flux[:,number], yerr = flux_err[:,number],
                     fmt= ' ',
-                    elinewidth = 2.5,
-                    marker = 'o',markersize = 2)
+                    elinewidth = 2,
+                    marker = 'o',markersize = 2.5)
         ax.legend(('source 1', 'source 2','source 3','source 4','source 5',
                   'source 6','source 7','source 8','source 9','source 10',
                   'source 11','source 12','source 13','source 14','source 15',
@@ -257,7 +257,7 @@ def plot(filenames):
         ax.set_ylabel('Flux')
     
     flux_div = flux/flux[3] 
-    err_div = np.sqrt(((flux_err/flux)**2))*flux_div
+    err_div = (flux_err/flux)*flux_div
     
     # Flux ratio 
     fig2,ax = plt.subplots()
