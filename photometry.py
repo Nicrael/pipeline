@@ -257,7 +257,7 @@ def plot(filenames):
         ax.set_ylabel('Flux')
     
     flux_div = flux/flux[3] 
-    err_div = (flux_err/flux)*flux_div
+    err_div = np.sqrt((flux_err/flux)**2 + (flux_err/flux[3])**2)*flux_div
     
     # Flux ratio 
     fig2,ax = plt.subplots()
