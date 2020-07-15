@@ -17,6 +17,7 @@ from photutils import make_source_mask
 import astropy.units as u
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Local modules
 from fits import get_fits_header, get_fits_data
@@ -146,25 +147,25 @@ def do_photometry(data, apers, wcs, obstime=False):
     
     phot_table['residual_aperture_sum'] = final_sum
     phot_table['mjd-obs'] = obstime
-    
-    ron,gain,dark_current = ron_gain_dark()
+       
+    ron, gain, dark_current = ron_gain_dark()
+    n_pix_aperture = pixan.area
 
-    for n in phot_table['residual_aperture_sum']:
-        phot_table['S/N'] = final_sum / np.sqrt(final_sum
-                                                + bkg_mean * pixar.area
-                                                + ron
-                                                + (gain/2)**2
-                                                + dark_current)
-    #phot_table['poisson_err'] = np.sqrt(final_sum)
-    
+
+    phot_table['S/N'] = final_sum / np.sqrt(final_sum
+                                            + bkg_mean * pixar.area
+                                            + ron
+                                            + ((gain/2)**2)*n_pix_aperture
+                                            + dark_current*n_pix_aperture)
+
+##    phot_table['poisson_err'] = np.sqrt(final_sum)
+                
     # Calculate errorbar
     # gain,ron = funzione che finisce con return gain,ron
     # if gain and ron:
     # signal_noise(pixar, pixan, gain, ron)
     # aggiungi colonna con l'errore.
-    
     return(phot_table)
-
 
 def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=False):
 
@@ -197,7 +198,7 @@ def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=Fal
 
         positions = SkyCoord(catalog['ra'], catalog['dec'],
                              frame='icrs',
-                             unit=(u.deg,u.deg))                
+                             unit=(u.deg,u.deg))
 
         if display:
             d.set(f"file {filename}")
@@ -220,7 +221,59 @@ def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=Fal
                 d.set("regions", circ)
         
         tables.add_column(phot_table["residual_aperture_sum"], rename_duplicate=True)
-            
         log.info(f"Done {filename}")
 
-    return tables
+    return tables, phot_table
+
+def plot(filenames, limit = 65000):
+    tables, phot_table = apphot(filenames, r=6, r_in=15.5, r_out=25)
+    sources_number = len(tables)
+    files_number =  len(tables[0])
+
+    datas = [get_fits_header(f, fast=True)["MJD-OBS"] for f in filenames]
+    tabellone = np.array([tables[k] for k in tables.keys() ])
+    tabellone = np.insert(tabellone,  0, [datas], axis=1)
+    t = tabellone[:,:1]
+    flux = tabellone[:,1:files_number]
+    ones = np.ones([files_number,sources_number])
+    flux_err = phot_table['S/N']*ones
+    flux_div = flux/flux[3] 
+    err_div = np.sqrt((flux_err/flux)**2 + (flux_err/flux[3])**2)*flux_div
+    fig1,ax1 = plt.subplots()
+    fig2,ax2 = plt.subplots()
+   
+    for n in range(1,sources_number):
+        if all(flux[:,n]) < limit:
+            
+            # All stars together
+            ax1.errorbar(t,flux[:,n], yerr = flux_err[:,n],
+                fmt= ' ',
+                elinewidth = 2,
+                marker = 'o',markersize = 2.5)
+            ax1.legend(('source 1', 'source 2','source 3','source 4','source 5',
+              'source 6','source 7','source 8','source 9','source 10',
+              'source 11','source 12','source 13','source 14','source 15',
+              'source 16','source 17','source 18','source 19','source 20',
+              'source 21','source 22','source 23','source 24','source 25',
+              'source 26'))
+            ax1.set_xlabel('Time (MJD)')
+            ax1.set_ylabel('Flux')
+
+
+            # Flux ratio
+            ax2.errorbar(t,flux_div[:,n],yerr = err_div[:,n], fmt=' ',
+                elinewidth = 2, marker = 'o',
+                markersize = 2.5)
+            ax2.legend(('source 1', 'source 2','source 3','source 4','source 5',
+              'source 6','source 7','source 8','source 9','source 10',
+              'source 11','source 12','source 13','source 14','source 15',
+              'source 16','source 17','source 18','source 19','source 20',
+              'source 21','source 22','source 23','source 24','source 25',
+              'source 26'))
+            ax2.set_xlabel('Time (MJD)')
+            ax2.set_ylabel('Flux Ratio')
+        else:
+            log.warning('Saturated source '+ filename)
+            break
+        
+    return(plt.show())
