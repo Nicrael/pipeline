@@ -237,12 +237,12 @@ def plot(filenames, limit = 65000):
     flux = tabellone[:,1:files_number]
     ones = np.ones([files_number,sources_number])
     flux_err = phot_table['S/N']*ones
-    flux_div = flux/flux[3] 
-    err_div = np.sqrt((flux_err/flux)**2 + (flux_err/flux[3])**2)*flux_div
+    flux_div = flux/flux[0] 
+    err_div = np.sqrt((flux_err/flux)**2 + (flux_err/flux[0])**2)*flux_div
     fig1,ax1 = plt.subplots()
     fig2,ax2 = plt.subplots()
    
-    for n in range(1,sources_number):
+    for n in range(0,sources_number):
         if all(flux[:,n]) < limit:
             
             # All stars together
@@ -250,12 +250,12 @@ def plot(filenames, limit = 65000):
                 fmt= ' ',
                 elinewidth = 2,
                 marker = 'o',markersize = 2.5)
-            ax1.legend(('source 1', 'source 2','source 3','source 4','source 5',
-              'source 6','source 7','source 8','source 9','source 10',
-              'source 11','source 12','source 13','source 14','source 15',
-              'source 16','source 17','source 18','source 19','source 20',
-              'source 21','source 22','source 23','source 24','source 25',
-              'source 26'))
+##            ax1.legend(('source 1', 'source 2','source 3','source 4','source 5',
+##              'source 6','source 7','source 8','source 9','source 10',
+##              'source 11','source 12','source 13','source 14','source 15',
+##              'source 16','source 17','source 18','source 19','source 20',
+##              'source 21','source 22','source 23','source 24','source 25',
+##              'source 26'))
             ax1.set_xlabel('Time (MJD)')
             ax1.set_ylabel('Flux')
 
@@ -264,16 +264,47 @@ def plot(filenames, limit = 65000):
             ax2.errorbar(t,flux_div[:,n],yerr = err_div[:,n], fmt=' ',
                 elinewidth = 2, marker = 'o',
                 markersize = 2.5)
-            ax2.legend(('source 1', 'source 2','source 3','source 4','source 5',
-              'source 6','source 7','source 8','source 9','source 10',
-              'source 11','source 12','source 13','source 14','source 15',
-              'source 16','source 17','source 18','source 19','source 20',
-              'source 21','source 22','source 23','source 24','source 25',
-              'source 26'))
+##            ax2.legend(('source 1', 'source 2','source 3','source 4','source 5',
+##              'source 6','source 7','source 8','source 9','source 10',
+##              'source 11','source 12','source 13','source 14','source 15',
+##              'source 16','source 17','source 18','source 19','source 20',
+##              'source 21','source 22','source 23','source 24','source 25',
+##              'source 26'))
             ax2.set_xlabel('Time (MJD)')
             ax2.set_ylabel('Flux Ratio')
+
+            
         else:
             log.warning('Saturated source '+ filename)
             break
-        
+
+    # Target in magnitude with flux[0] used as reference 
+    fig3,ax3 = plt.subplots()
+    
+    magnitude = -2.5*np.log10(flux[:,2]/flux[:,0])
+    ax3.errorbar(t,magnitude,yerr = err_div[:,2], fmt = ' ',
+                         elinewidth = 2, marker = 'o', markersize = 2.5)
+
+    # Defot plot 
+    tab_defot = ascii.read('gj3470-defot.dat')
+    time = tab_defot['col3']
+    mag = [tab_defot['col8'], tab_defot['col9'], tab_defot['col10'],
+           tab_defot['col11'], tab_defot['col12'], tab_defot['col13']]
+    err = [tab_defot['col14'], tab_defot['col15'], tab_defot['col16'],
+           tab_defot['col17'], tab_defot['col18'], tab_defot['col19']]
+
+    fig4,ax4 = plt.subplots()
+    for n in range(0,5):
+        ax4.errorbar(time,mag[n],yerr=err[n], fmt = ' ',elinewidth=3,
+                     marker = 'o', markersize = 3.5)
+    
+    
+    ax4.set_xlabel('Time (MJD)')
+    ax4.set_ylabel('Magnitude')
+
+##    fig5,ax5 = plt.subplots()
+##    ax5.errorbar(time,mag[2],yerr=err[5],fmt = ' ', elinewidth=3,
+##                 marker = 'o', markersize = 3.5)
+##    
     return(plt.show())
+     
