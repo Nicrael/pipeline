@@ -225,86 +225,106 @@ def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=Fal
 
     return tables, phot_table
 
-def plot(filenames, limit = 65000):
+def plot(filenames, limit = 65000, dat_file = 'gj3470-defot.dat'):
+    filenames = sorted(filenames)
     tables, phot_table = apphot(filenames, r=6, r_in=15.5, r_out=25)
     sources_number = len(tables)
     files_number =  len(tables[0])
 
     datas = [get_fits_header(f, fast=True)["MJD-OBS"] for f in filenames]
-    tabellone = np.array([tables[k] for k in tables.keys() ])
+    tabellone = np.array([tables[k] for k in tables.keys()])
     tabellone = np.insert(tabellone,  0, [datas], axis=1)
     t = tabellone[:,:1]
     flux = tabellone[:,1:files_number]
-    ones = np.ones([files_number,sources_number])
+    ones = np.ones([files_number,sources_number]) # in orde to obtain consistent error matrix
     flux_err = phot_table['S/N']*ones
-    flux_div = flux/flux[0] 
-    err_div = np.sqrt((flux_err/flux)**2 + (flux_err/flux[0])**2)*flux_div
+    magnitude = -2.5*np.log10(flux) # with an ideal source who's flux == 1. 
+    err_log = 0.434*(flux_err/flux) # for error given by logaritm base 10
+    
+    defot_table = ascii.read(dat_file)
+##    defot_time_JD = Time(defot_table['col2'], format= 'jd')
+##    defot_time = defot_time_JD.mjd # conversion from JD to MJD
+    defot_time = defot_table['col2'] - 2400000 #why aren't the previous lines working?
+
     fig1,ax1 = plt.subplots()
     fig2,ax2 = plt.subplots()
-   
-    for n in range(0,sources_number):
-        if all(flux[:,n]) < limit:
-            
-            # All stars together
-            ax1.errorbar(t,flux[:,n], yerr = flux_err[:,n],
-                fmt= ' ',
-                elinewidth = 2,
-                marker = 'o',markersize = 2.5)
-##            ax1.legend(('source 1', 'source 2','source 3','source 4','source 5',
-##              'source 6','source 7','source 8','source 9','source 10',
-##              'source 11','source 12','source 13','source 14','source 15',
-##              'source 16','source 17','source 18','source 19','source 20',
-##              'source 21','source 22','source 23','source 24','source 25',
-##              'source 26'))
-            ax1.set_xlabel('Time (MJD)')
-            ax1.set_ylabel('Flux')
-
-
-            # Flux ratio
-            ax2.errorbar(t,flux_div[:,n],yerr = err_div[:,n], fmt=' ',
-                elinewidth = 2, marker = 'o',
-                markersize = 2.5)
-##            ax2.legend(('source 1', 'source 2','source 3','source 4','source 5',
-##              'source 6','source 7','source 8','source 9','source 10',
-##              'source 11','source 12','source 13','source 14','source 15',
-##              'source 16','source 17','source 18','source 19','source 20',
-##              'source 21','source 22','source 23','source 24','source 25',
-##              'source 26'))
-            ax2.set_xlabel('Time (MJD)')
-            ax2.set_ylabel('Flux Ratio')
-
-            
-        else:
-            log.warning('Saturated source '+ filename)
-            break
-
-    # Target in magnitude with flux[0] used as reference 
     fig3,ax3 = plt.subplots()
-    
-    magnitude = -2.5*np.log10(flux[:,2]/flux[:,0])
-    ax3.errorbar(t,magnitude,yerr = err_div[:,2], fmt = ' ',
-                         elinewidth = 2, marker = 'o', markersize = 2.5)
-
-    # Defot plot 
-    tab_defot = ascii.read('gj3470-defot.dat')
-    time = tab_defot['col3']
-    mag = [tab_defot['col8'], tab_defot['col9'], tab_defot['col10'],
-           tab_defot['col11'], tab_defot['col12'], tab_defot['col13']]
-    err = [tab_defot['col14'], tab_defot['col15'], tab_defot['col16'],
-           tab_defot['col17'], tab_defot['col18'], tab_defot['col19']]
-
     fig4,ax4 = plt.subplots()
-    for n in range(0,5):
-        ax4.errorbar(time,mag[n],yerr=err[n], fmt = ' ',elinewidth=3,
-                     marker = 'o', markersize = 3.5)
+    fig5,ax5 = plt.subplots()
+
+    # Now let's plot defot and apphot magnitudes with different reference stars
+    target_ref1 = (magnitude[:,2]-magnitude[:,0]) # Target - star number 2 
+    target_mag1 = (defot_table['col8']-defot_table['col9'])
+    error_defot1 = np.sqrt(defot_table['col14']**2 + defot_table['col15']**2)
+    err_mag1 = np.sqrt(err_log[:,2]**2 + err_log[:,0]**2) # For magnitudes subtractions
+    ax1.errorbar(defot_time, target_mag1, yerr = error_defot1, elinewidth = 1,
+                marker = 'o', markersize = 1.5)
+    ax1.errorbar(t,target_ref1, yerr = err_mag1,
+                 elinewidth = 1, 
+                marker = 'o', markersize = 1.5)
+    ax1.legend(('Defot Plot', 'Apphot Plot'))
+    ax1.set_xlabel('Time (MJD)')
+    ax1.set_ylabel('Magnitude')
+    ax1.set_title('Comparison using star 2')
+
+    target_ref2 = (magnitude[:,2]-magnitude[:,1])
+    target_mag2 = (defot_table['col8']-defot_table['col10'])
+    error_defot2 = np.sqrt(defot_table['col14']**2 + defot_table['col16']**2)
+    err_mag2 = np.sqrt(err_log[:,2]**2 + err_log[:,1]**2)
+    ax2.errorbar(defot_time, target_mag2, yerr = error_defot2, elinewidth = 1,
+                marker = 'o', markersize = 1.5)
+    ax2.errorbar(t,target_ref2, yerr = err_mag2,
+                 elinewidth = 1, 
+                marker = 'o', markersize = 1.5)
+    ax2.legend(('Defot Plot', 'Apphot Plot'))
+    ax2.set_xlabel('Time (MJD)')
+    ax2.set_ylabel('Magnitude')
+    ax2.set_title('Comparison using star 3')
     
+
+    target_ref3 = (magnitude[:,2]-magnitude[:,19])
+    target_mag3 = (defot_table['col8']-defot_table['col11'])
+    error_defot3 = np.sqrt(defot_table['col14']**2 + defot_table['col17']**2)
+    err_mag3 = np.sqrt(err_log[:,2]**2 + err_log[:,19]**2)
+    ax3.errorbar(defot_time, target_mag3, yerr = error_defot3, elinewidth = 1,
+                marker = 'o', markersize = 1.5)
+    ax3.errorbar(t,target_ref3, yerr = err_mag3,
+                 elinewidth = 1, 
+                marker = 'o', markersize = 1.5)
+    ax3.legend(('Defot Plot', 'Apphot Plot'))
+    ax3.set_xlabel('Time (MJD)')
+    ax3.set_ylabel('Magnitude')
+    ax3.set_title('Comparison using star 4')
     
+
+    target_ref4 = (magnitude[:,2]-magnitude[:,14])
+    target_mag4 = (defot_table['col8']-defot_table['col12'])
+    error_defot4 = np.sqrt(defot_table['col14']**2 + defot_table['col18']**2)
+    err_mag4 = np.sqrt(err_log[:,2]**2 + err_log[:,14]**2)
+    ax4.errorbar(defot_time, target_mag4, yerr = error_defot4, elinewidth = 1,
+                marker = 'o', markersize = 1.5)
+    ax4.errorbar(t,target_ref4, yerr = err_mag4,
+                 elinewidth = 1, 
+                marker = 'o', markersize = 1.5)
+    ax4.legend(('Defot Plot', 'Apphot Plot'))
     ax4.set_xlabel('Time (MJD)')
     ax4.set_ylabel('Magnitude')
+    ax4.set_title('Comparison using star 5')
+    
 
-##    fig5,ax5 = plt.subplots()
-##    ax5.errorbar(time,mag[2],yerr=err[5],fmt = ' ', elinewidth=3,
-##                 marker = 'o', markersize = 3.5)
-##    
+    target_ref5 = (magnitude[:,2]-magnitude[:,11])
+    target_mag5 = (defot_table['col8']-defot_table['col13'])
+    error_defot5 = np.sqrt(defot_table['col14']**2 + defot_table['col19']**2)
+    err_mag5 = np.sqrt(err_log[:,2]**2 + err_log[:,11]**2)
+    ax5.errorbar(defot_time, target_mag5, yerr = error_defot5, elinewidth = 1,
+                marker = 'o', markersize = 1.5)
+    ax5.errorbar(t,target_ref5, yerr = err_mag5,
+                 elinewidth = 1, 
+                marker = 'o', markersize = 1.5)
+    ax5.legend(('Defot Plot', 'Apphot Plot'))
+    ax5.set_xlabel('Time (MJD)')
+    ax5.set_ylabel('Magnitude')
+    ax5.set_title('Comparison using star 6')
+
     return(plt.show())
      
