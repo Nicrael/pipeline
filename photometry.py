@@ -225,8 +225,8 @@ def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=Fal
 
     return tables, phot_table
 
-def plot(filenames, limit = 65000, dat_file = 'gj3470-defot.dat'):
-    filenames = sorted(filenames)
+def plot(filenames, flux_stable_ref = 1, limit = 65000, dat_file = 'gj3470-defot.dat'):
+    filenames = sorted(filenames) 
     tables, phot_table = apphot(filenames, r=6, r_in=15.5, r_out=25)
     sources_number = len(tables)
     files_number =  len(tables[0])
@@ -236,15 +236,15 @@ def plot(filenames, limit = 65000, dat_file = 'gj3470-defot.dat'):
     tabellone = np.insert(tabellone,  0, [datas], axis=1)
     t = tabellone[:,:1]
     flux = tabellone[:,1:files_number]
-    ones = np.ones([files_number,sources_number]) # in orde to obtain consistent error matrix
+    ones = np.ones([files_number,sources_number]) # in order to obtain consistent error matrix
     flux_err = phot_table['S/N']*ones
-    magnitude = -2.5*np.log10(flux) # with an ideal source who's flux == 1. 
+    magnitude = -2.5*np.log10(flux/flux_stable_ref) # with an ideal source who's flux == 1. 
     err_log = 0.434*(flux_err/flux) # for error given by logaritm base 10
     
     defot_table = ascii.read(dat_file)
 ##    defot_time_JD = Time(defot_table['col2'], format= 'jd')
 ##    defot_time = defot_time_JD.mjd # conversion from JD to MJD
-    defot_time = defot_table['col2'] - 2400000 #why aren't the previous lines working?
+    defot_time = defot_table['col2'] - 2400000 # why aren't the previous lines working?
 
     fig1,ax1 = plt.subplots()
     fig2,ax2 = plt.subplots()
