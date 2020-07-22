@@ -239,7 +239,7 @@ def plot(filenames, flux_stable_ref = 1, limit = 65000, dat_file = 'gj3470-defot
     ones = np.ones([files_number,sources_number]) # in order to obtain consistent error matrix
     flux_err = phot_table['S/N']*ones
     magnitude = -2.5*np.log10(flux/flux_stable_ref) # with an ideal source who's flux == 1. 
-    err_log = 0.434*(flux_err/flux) # for error given by logaritm base 10
+    err_log = 1.0857*(flux_err/flux) # for error given by logaritm base 10
     
     defot_table = ascii.read(dat_file)
 ##    defot_time_JD = Time(defot_table['col2'], format= 'jd')
