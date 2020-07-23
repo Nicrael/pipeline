@@ -149,8 +149,6 @@ def do_photometry(data, apers, wcs, obstime=False, flux=False, zero_point_flux=1
     bkg_sum = bkg_mean * pixar.area
     
     final_sum = phot_table['aperture_sum_0'] - bkg_sum
-    if not flux:
-        final_sum =  -2.5*np.log10( final_sum / zero_point_flux) 
     
     signal_noise_ratio = final_sum / np.sqrt(final_sum
                                              + bkg_mean * pixar.area
@@ -159,12 +157,14 @@ def do_photometry(data, apers, wcs, obstime=False, flux=False, zero_point_flux=1
                                              + dark_current * pixan.area)
     
     error = signal_noise_ratio
+    
     if not flux:
+        final_sum =  -2.5*np.log10( final_sum / zero_point_flux) 
         error = 1.0857*(error/final_sum)
     
     phot_table['residual_aperture_sum'] = final_sum
     phot_table['mjd-obs'] = obstime       
-    phot_table['Error'] = error
+    phot_table['error'] = error
 
 ##    phot_table['poisson_err'] = np.sqrt(final_sum)
                 
