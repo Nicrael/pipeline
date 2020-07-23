@@ -136,7 +136,7 @@ def set_apertures(catalog, limit=16, r=10, r_in=15.5, r_out=25):
     return apers
 
 
-def do_photometry(data, apers, wcs, obstime=False, magnitude=True, flux=False, zero_point_flux=1):
+def do_photometry(data, apers, wcs, obstime=False, flux=False, zero_point_flux=1):
 
     phot_table = aperture_photometry(data, apers, wcs=wcs)
 
@@ -160,7 +160,7 @@ def do_photometry(data, apers, wcs, obstime=False, magnitude=True, flux=False, z
     
     error = signal_noise_ratio
     if not flux:
-        error = 1.0857*(signal_noise_ratio/final_sum)
+        error = 1.0857*(error/final_sum)
     
     phot_table['residual_aperture_sum'] = final_sum
     phot_table['mjd-obs'] = obstime       
