@@ -134,29 +134,42 @@ def set_apertures(catalog, limit=16, r=10, r_in=15.5, r_out=25):
     return apers
 
 
-def do_photometry(data, apers, wcs, obstime=False):
+def do_photometry(data, apers, wcs, obstime=False, magnitude=True, flux=False, stable_star_flux=1):
 
     phot_table = aperture_photometry(data, apers, wcs=wcs)
 
     pixar = apers[0].to_pixel(wcs)
     pixan = apers[1].to_pixel(wcs)
 
-    bkg_mean = phot_table['aperture_sum_1'] / pixan.area
-    bkg_sum = bkg_mean * pixar.area
-    final_sum = phot_table['aperture_sum_0'] - bkg_sum
-    
-    phot_table['residual_aperture_sum'] = final_sum
-    phot_table['mjd-obs'] = obstime
-       
     ron, gain, dark_current = ron_gain_dark()
     n_pix_aperture = pixan.area
 
+    bkg_mean = phot_table['aperture_sum_1'] / pixan.area
+    bkg_sum = bkg_mean * pixar.area
 
-    phot_table['S/N'] = final_sum / np.sqrt(final_sum
+    if magnitude == True and flux == False:
+        final_sum = -2.5*np.log10((phot_table['aperture_sum_0'] - bkg_sum)/stable_star_flux)
+        signal_noise_ratio =  final_sum / np.sqrt(final_sum
                                             + bkg_mean * pixar.area
                                             + ron
                                             + ((gain/2)**2)*n_pix_aperture
                                             + dark_current*n_pix_aperture)
+        error = 1.0857*(signal_noise_ratio/final_sum)
+        
+    else:
+        final_sum = phot_table['aperture_sum_0'] - bkg_sum
+        signal_noise_ratio = final_sum / np.sqrt(final_sum
+                                            + bkg_mean * pixar.area
+                                            + ron
+                                            + ((gain/2)**2)*n_pix_aperture
+                                            + dark_current*n_pix_aperture)
+        error = signal_noise_ratio
+    
+    phot_table['residual_aperture_sum'] = final_sum
+    phot_table['mjd-obs'] = obstime
+       
+
+    phot_table['Error'] = error
 
 ##    phot_table['poisson_err'] = np.sqrt(final_sum)
                 
@@ -181,6 +194,7 @@ def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=Fal
         apers = set_apertures(catalog)
 
     tables = Table()
+    err_table = Table()
 
     if display:
         import pyds9
@@ -194,12 +208,12 @@ def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=Fal
         #catalog = load_catalog(wcs=wcs)
         #apers = set_apertures(catalog, r=r, r_in=r_in, r_out=r_out)
             
-        phot_table = do_photometry(data, apers, wcs, obstime=header["MJD-OBS"])
+        phot_table = do_photometry(data, apers, wcs, obstime=header["MJD-OBS"], magnitude=True,
+                                   flux=False, stable_star_flux=1)
 
         positions = SkyCoord(catalog['ra'], catalog['dec'],
                              frame='icrs',
                              unit=(u.deg,u.deg))
-
         if display:
             d.set(f"file {filename}")
             
@@ -221,110 +235,45 @@ def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=Fal
                 d.set("regions", circ)
         
         tables.add_column(phot_table["residual_aperture_sum"], rename_duplicate=True)
+        err_table.add_column(phot_table["Error"], rename_duplicate=True)
         log.info(f"Done {filename}")
 
-    return tables, phot_table
+    return tables, err_table
 
-def plot(filenames, flux_stable_ref = 1, limit = 65000, dat_file = 'gj3470-defot.dat'):
+def plot(filenames, dat_file = 'gj3470-defot.dat'):
     filenames = sorted(filenames) 
-    tables, phot_table = apphot(filenames, r=6, r_in=15.5, r_out=25)
-    sources_number = len(tables)
-    files_number =  len(tables[0])
+    tables, err_table = apphot(filenames, r=6, r_in=15.5, r_out=25)
 
-    datas = [get_fits_header(f, fast=True)["MJD-OBS"] for f in filenames]
-    tabellone = np.array([tables[k] for k in tables.keys()])
-    tabellone = np.insert(tabellone,  0, [datas], axis=1)
-    t = tabellone[:,:1]
-    flux = tabellone[:,1:files_number]
-    ones = np.ones([files_number,sources_number]) # in order to obtain consistent error matrix
-    flux_err = phot_table['S/N']*ones
-    magnitude = -2.5*np.log10(flux/flux_stable_ref) # with an ideal source who's flux == 1. 
-    err_log = 1.0857*(flux_err/flux) # for error given by logaritm base 10
-    
+    t = [get_fits_header(f, fast=True)["MJD-OBS"] for f in filenames]    
+    magnitude = np.array([tables[k] for k in tables.keys()])   
+    mag_err = np.array([err_table[k] for k in err_table.keys() ])   
     defot_table = ascii.read(dat_file)
-##    defot_time_JD = Time(defot_table['col2'], format= 'jd')
-##    defot_time = defot_time_JD.mjd # conversion from JD to MJD
-    defot_time = defot_table['col2'] - 2400000 # why aren't the previous lines working?
+    defot_time = defot_table['col2'] - 2400000 
 
-    fig1,ax1 = plt.subplots()
-    fig2,ax2 = plt.subplots()
-    fig3,ax3 = plt.subplots()
-    fig4,ax4 = plt.subplots()
-    fig5,ax5 = plt.subplots()
-
-    # Now let's plot defot and apphot magnitudes with different reference stars
-    target_ref1 = (magnitude[:,2]-magnitude[:,0]) # Target - star number 2 
-    target_mag1 = (defot_table['col8']-defot_table['col9'])
-    error_defot1 = np.sqrt(defot_table['col14']**2 + defot_table['col15']**2)
-    err_mag1 = np.sqrt(err_log[:,2]**2 + err_log[:,0]**2) # For magnitudes subtractions
-    ax1.errorbar(defot_time, target_mag1, yerr = error_defot1, elinewidth = 1,
-                marker = 'o', markersize = 1.5)
-    ax1.errorbar(t,target_ref1, yerr = err_mag1,
-                 elinewidth = 1, 
-                marker = 'o', markersize = 1.5)
-    ax1.legend(('Defot Plot', 'Apphot Plot'))
-    ax1.set_xlabel('Time (MJD)')
-    ax1.set_ylabel('Magnitude')
-    ax1.set_title('Comparison using star 2')
-
-    target_ref2 = (magnitude[:,2]-magnitude[:,1])
-    target_mag2 = (defot_table['col8']-defot_table['col10'])
-    error_defot2 = np.sqrt(defot_table['col14']**2 + defot_table['col16']**2)
-    err_mag2 = np.sqrt(err_log[:,2]**2 + err_log[:,1]**2)
-    ax2.errorbar(defot_time, target_mag2, yerr = error_defot2, elinewidth = 1,
-                marker = 'o', markersize = 1.5)
-    ax2.errorbar(t,target_ref2, yerr = err_mag2,
-                 elinewidth = 1, 
-                marker = 'o', markersize = 1.5)
-    ax2.legend(('Defot Plot', 'Apphot Plot'))
-    ax2.set_xlabel('Time (MJD)')
-    ax2.set_ylabel('Magnitude')
-    ax2.set_title('Comparison using star 3')
+    m = [0, 1, 19, 14, 11]
+    defot_mags = [defot_table['col8'] - defot_table['col9'], defot_table['col8'] - defot_table['col10'],
+                  defot_table['col8'] - defot_table['col11'], defot_table['col8'] - defot_table['col12'],
+                  defot_table['col8'] - defot_table['col13']]
     
-
-    target_ref3 = (magnitude[:,2]-magnitude[:,19])
-    target_mag3 = (defot_table['col8']-defot_table['col11'])
-    error_defot3 = np.sqrt(defot_table['col14']**2 + defot_table['col17']**2)
-    err_mag3 = np.sqrt(err_log[:,2]**2 + err_log[:,19]**2)
-    ax3.errorbar(defot_time, target_mag3, yerr = error_defot3, elinewidth = 1,
-                marker = 'o', markersize = 1.5)
-    ax3.errorbar(t,target_ref3, yerr = err_mag3,
-                 elinewidth = 1, 
-                marker = 'o', markersize = 1.5)
-    ax3.legend(('Defot Plot', 'Apphot Plot'))
-    ax3.set_xlabel('Time (MJD)')
-    ax3.set_ylabel('Magnitude')
-    ax3.set_title('Comparison using star 4')
+    defot_errs = [np.sqrt(defot_table['col14']**2 + defot_table['col15']**2),
+                  np.sqrt(defot_table['col14']**2 + defot_table['col16']**2),
+                  np.sqrt(defot_table['col14']**2 + defot_table['col17']**2),
+                  np.sqrt(defot_table['col14']**2 + defot_table['col18']**2),
+                  np.sqrt(defot_table['col14']**2 + defot_table['col19']**2)]
     
+    fig = plt.figure()
+    for n in range(1,6):
+        ax = fig.add_subplot(2,3,n)
+        ax.errorbar(defot_time, defot_mags[n-1], yerr = defot_errs[n-1], fmt = ' ', elinewidth = 1,
+                    marker = 'o', markersize = 1.5)
+        ax.errorbar(t, magnitude[:,2] - magnitude[:,m[n-1]],
+                    yerr = np.sqrt(mag_err[:,2]**2 + mag_err[:,m[n-1]]**2),fmt = ' ',
+                    elinewidth = 1,
+                    marker = 'o', markersize = 1.5)
+        ax.legend(('Defot Plot', 'Apphot Plot'))
+        ax.set_xlabel('Time (MJD)')
+        ax.set_ylabel('Magnitude')
 
-    target_ref4 = (magnitude[:,2]-magnitude[:,14])
-    target_mag4 = (defot_table['col8']-defot_table['col12'])
-    error_defot4 = np.sqrt(defot_table['col14']**2 + defot_table['col18']**2)
-    err_mag4 = np.sqrt(err_log[:,2]**2 + err_log[:,14]**2)
-    ax4.errorbar(defot_time, target_mag4, yerr = error_defot4, elinewidth = 1,
-                marker = 'o', markersize = 1.5)
-    ax4.errorbar(t,target_ref4, yerr = err_mag4,
-                 elinewidth = 1, 
-                marker = 'o', markersize = 1.5)
-    ax4.legend(('Defot Plot', 'Apphot Plot'))
-    ax4.set_xlabel('Time (MJD)')
-    ax4.set_ylabel('Magnitude')
-    ax4.set_title('Comparison using star 5')
-    
-
-    target_ref5 = (magnitude[:,2]-magnitude[:,11])
-    target_mag5 = (defot_table['col8']-defot_table['col13'])
-    error_defot5 = np.sqrt(defot_table['col14']**2 + defot_table['col19']**2)
-    err_mag5 = np.sqrt(err_log[:,2]**2 + err_log[:,11]**2)
-    ax5.errorbar(defot_time, target_mag5, yerr = error_defot5, elinewidth = 1,
-                marker = 'o', markersize = 1.5)
-    ax5.errorbar(t,target_ref5, yerr = err_mag5,
-                 elinewidth = 1, 
-                marker = 'o', markersize = 1.5)
-    ax5.legend(('Defot Plot', 'Apphot Plot'))
-    ax5.set_xlabel('Time (MJD)')
-    ax5.set_ylabel('Magnitude')
-    ax5.set_title('Comparison using star 6')
 
     return(plt.show())
      
