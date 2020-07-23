@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 from fits import get_fits_header, get_fits_data
 from fill_header import init_observatory 
 
+
 def ron_gain_dark(my_instr="Mexman"):
     instrument = init_observatory(my_instr)
     gain = instrument['gain'] or 1
@@ -31,6 +32,7 @@ def ron_gain_dark(my_instr="Mexman"):
     log.info(f"Gain: {gain}, RON: {ron}, Dark current: {dark_current}")
         
     return ron, gain, dark_current
+
 
 def detect_sources(image):
     ''' By Anna Marini
@@ -149,14 +151,12 @@ def do_photometry(data, apers, wcs, obstime=False):
     phot_table['mjd-obs'] = obstime
        
     ron, gain, dark_current = ron_gain_dark()
-    n_pix_aperture = pixan.area
-
 
     phot_table['S/N'] = final_sum / np.sqrt(final_sum
                                             + bkg_mean * pixar.area
                                             + ron
-                                            + ((gain/2)**2)*n_pix_aperture
-                                            + dark_current*n_pix_aperture)
+                                            + ((gain/2)**2) * pixan.area
+                                            + dark_current * pixan.area)
 
 ##    phot_table['poisson_err'] = np.sqrt(final_sum)
                 
