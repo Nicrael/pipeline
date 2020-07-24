@@ -139,7 +139,7 @@ def set_apertures(catalog, limit=16, r=10, r_in=15.5, r_out=25):
 def do_photometry(data, apers, wcs, obstime=False, flux=False, zero_point_flux=1):
 
     phot_table = aperture_photometry(data, apers, wcs=wcs)
-
+    
     pixar = apers[0].to_pixel(wcs)
     pixan = apers[1].to_pixel(wcs)
 
@@ -147,32 +147,25 @@ def do_photometry(data, apers, wcs, obstime=False, flux=False, zero_point_flux=1
 
     bkg_mean = phot_table['aperture_sum_1'] / pixan.area
     bkg_sum = bkg_mean * pixar.area
-    
-    final_sum = phot_table['aperture_sum_0'] - bkg_sum
-    
-    signal_noise_ratio = final_sum / np.sqrt(final_sum
+    flux_sum = phot_table['aperture_sum_0'] - bkg_sum #needed to change name, because of ambiguities due to the same name for different variables
+    signal_noise_ratio =  flux_sum / np.sqrt(flux_sum
                                              + bkg_mean * pixar.area
                                              + ron
-                                             + ((gain/2)**2) * pixan.area
-                                             + dark_current * pixan.area)
-    
+                                             + ((gain/2)**2)*pixan.area
+                                             + dark_current*pixan.area)
     error = signal_noise_ratio
-    
+    final_sum = flux_sum
+
     if not flux:
-        final_sum =  -2.5*np.log10( final_sum / zero_point_flux) 
-        error = 1.0857*(error/final_sum)
-    
+        final_sum =  -2.5*np.log10(flux_sum/ zero_point_flux) 
+        error = (np.log10(np.e))*2.5*(error/flux_sum) 
+        
     phot_table['residual_aperture_sum'] = final_sum
     phot_table['mjd-obs'] = obstime       
     phot_table['error'] = error
 
 ##    phot_table['poisson_err'] = np.sqrt(final_sum)
                 
-    # Calculate errorbar
-    # gain,ron = funzione che finisce con return gain,ron
-    # if gain and ron:
-    # signal_noise(pixar, pixan, gain, ron)
-    # aggiungi colonna con l'errore.
     return(phot_table)
 
 def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=False):
@@ -203,8 +196,8 @@ def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=Fal
         #catalog = load_catalog(wcs=wcs)
         #apers = set_apertures(catalog, r=r, r_in=r_in, r_out=r_out)
             
-        phot_table = do_photometry(data, apers, wcs, obstime=header["MJD-OBS"], magnitude=True,
-                                   flux=False, stable_star_flux=1)
+        phot_table = do_photometry(data, apers, wcs, obstime=header['MJD-OBS'],
+                                   flux=False, zero_point_flux=1)
 
         positions = SkyCoord(catalog['ra'], catalog['dec'],
                              frame='icrs',
@@ -230,7 +223,7 @@ def apphot(filenames, reference=0, display=False, r=False, r_in=False, r_out=Fal
                 d.set("regions", circ)
         
         tables.add_column(phot_table["residual_aperture_sum"], rename_duplicate=True)
-        err_table.add_column(phot_table["Error"], rename_duplicate=True)
+        err_table.add_column(phot_table["error"], rename_duplicate=True)
         log.info(f"Done {filename}")
 
     return tables, err_table
@@ -240,8 +233,8 @@ def plot(filenames, dat_file = 'gj3470-defot.dat'):
     tables, err_table = apphot(filenames, r=6, r_in=15.5, r_out=25)
 
     t = [get_fits_header(f, fast=True)["MJD-OBS"] for f in filenames]    
-    magnitude = np.array([tables[k] for k in tables.keys()])   
-    mag_err = np.array([err_table[k] for k in err_table.keys() ])   
+    magnitude = np.array([tables[k] for k in tables.keys()])
+    mag_err = np.array([err_table[k] for k in err_table.keys()])
     defot_table = ascii.read(dat_file)
     defot_time = defot_table['col2'] - 2400000 
 
