@@ -3,10 +3,6 @@
 
 import numpy as np
 from astropy.table import Table
-from astropy.stats import sigma_clip
-from astropy.modeling import models, fitting
-from functools import reduce
-from operator import add
 from astropy.io import ascii
 import matplotlib.pyplot as plt
 
