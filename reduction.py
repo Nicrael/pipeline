@@ -10,7 +10,8 @@ import numpy as np
 # Local modules
 from sorters import dfits # apparently, no cross imports
 from fits import get_fits_data, write_fits
-from fill_header import init_observatory
+from fill_header import init_observatory, observatory
+
 from naming import output_file, hist
 
 
@@ -185,7 +186,7 @@ def mask(data, sigma=3, output_file=None, header=None):
     return mask
 
 
-def mask_reg(data, sigma=3, output_file=None):
+def mask_reg(data, output_file=None):
     '''
     Create a bad pixel region table
     '''

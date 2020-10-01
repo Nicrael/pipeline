@@ -25,34 +25,34 @@
 # Data based
 ##########################################
 
-import glob
-from reduction import combine
-from sorters import dfits
+# import glob
+# from reduction import combine
+# from sorters import dfits
 
-# MBIAS
-biases = glob.glob("gj3470/*/bias/*.fit*", recursive=True)
-mbias = combine(biases, method='median')
+# # MBIAS
+# biases = glob.glob("gj3470/*/bias/*.fit*", recursive=True)
+# mbias = combine(biases, method='median')
 
-# MDARK
-darks = glob.glob("gj3470/*/dark/*.fit*", recursive=True)
-mdark = combine(darks, mbias=mbias, method='median')
+# # MDARK
+# darks = glob.glob("gj3470/*/dark/*.fit*", recursive=True)
+# mdark = combine(darks, mbias=mbias, method='median')
 
-# MFLAT
-flats = glob.glob("gj3470/*/flat/*.fit*", recursive=True)
-mflat = combine(flats, mbias=mbias, # mdark=mdark,
-                normalize=True, method='median')
+# # MFLAT
+# flats = glob.glob("gj3470/*/flat/*.fit*", recursive=True)
+# mflat = combine(flats, mbias=mbias, # mdark=mdark,
+#                 normalize=True, method='median')
 
-# CLEAN CUBE
-obj_all = glob.glob("gj3470/*/object/*.fit*", recursive=True)
-objects = dfits(obj_all, fast=True).fitsort(['object']).unique_names_for(('GJ3470',))
+# # CLEAN CUBE
+# obj_all = glob.glob("gj3470/*/object/*.fit*", recursive=True)
+# objects = dfits(obj_all, fast=True).fitsort(['object']).unique_names_for(('GJ3470',))
 
-clean_cube = combine(objects, mbias=mbias, mflat=mflat, # mdark=mdark,
-                     method='cube')
+# clean_cube = combine(objects, mbias=mbias, mflat=mflat, # mdark=mdark,
+#                      method='cube')
 
-# CLEAN SLICES
-for o in objects:
-    clean_slice = combine(o, mbias=mbias, # mdark=mdark,
-                          mflat=mflat)
+# # CLEAN SLICES
+# for o in objects:
+#     clean_slice = combine(o, mbias=mbias, # mdark=mdark,
+#                           mflat=mflat)
 
 
 ##########################################
@@ -95,8 +95,10 @@ datas = [get_fits_header(f, fast=True)["MJD-OBS"] for f in solved]
 airmass = [get_fits_header(f, fast=True)["AIRMASS"] for f in solved] 
 tables = apphot(solved, r=6, r_in=15.5, r_out=25)
 tabellone = np.array([tables[k] for k in tables.keys() ])
-tabellone=np.insert(tabellone,  0, [datas, airmass], axis=1)
+tabellone = np.insert(tabellone,  0, [datas, airmass], axis=1)
 ascii.write( tabellone, "tabellone.txt", overwrite=True)
+
+
 
 #plot f u ($1-58800):(-2.5*log10($5/($4+$14+$16))) w lp pt 7, g u ($2-2458800):($8+2.5*log10(10**(-$10*.4)+10**(-$12*.4)+10**(-$13*0.4) ))-0.000 w lp pt 7 lc rgb "orange"
 
@@ -106,26 +108,26 @@ ascii.write( tabellone, "tabellone.txt", overwrite=True)
 ####################################
 
 
-def main():
-    '''
-    Main function
-    '''
-    pattern = sys.argv[1:] # File(s). "1:" stands for "From 1 on".
+# def main():
+#     '''
+#     Main function
+#     '''
+#     pattern = sys.argv[1:] # File(s). "1:" stands for "From 1 on".
 
-    # dfits ~/desktop/oarpaf/test-sbig-stx/*.fits | fitsort IMAGETYP NAXIS1 DATE-OBS | grep 'Bias' |grep '4096' |grep '2019-11-22' | awk '{print $1}'
-    # dfits ~/desktop/oarpaf/test-sbig-stx/*.fits | fitsort IMAGETYP NAXIS1 DATE-OBS | grep 'Bias' |grep '4096' |grep '2019-11-22' | awk '{print $1}'
+#     # dfits ~/desktop/oarpaf/test-sbig-stx/*.fits | fitsort IMAGETYP NAXIS1 DATE-OBS | grep 'Bias' |grep '4096' |grep '2019-11-22' | awk '{print $1}'
+#     # dfits ~/desktop/oarpaf/test-sbig-stx/*.fits | fitsort IMAGETYP NAXIS1 DATE-OBS | grep 'Bias' |grep '4096' |grep '2019-11-22' | awk '{print $1}'
 
-# 'abc' -> ['abc']
+# # 'abc' -> ['abc']
 
 
-if __name__ == '__main__':
-    '''
-    If called as a script
-    '''
-    import sys
+# if __name__ == '__main__':
+#     '''
+#     If called as a script
+#     '''
+#     import sys
 
-    if len(sys.argv) < 2 :    # C'è anche lo [0] che è il nome del file :)
-        print("Usage:  "+sys.argv[0]+" <list of FITS files>")
-        sys.exit()
+#     if len(sys.argv) < 2 :    # C'è anche lo [0] che è il nome del file :)
+#         print("Usage:  "+sys.argv[0]+" <list of FITS files>")
+#         sys.exit()
 
-    main()
+#     main()
