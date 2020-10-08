@@ -5,8 +5,6 @@ import numpy as np
 from astropy.table import Table
 from astropy.io import ascii
 import matplotlib.pyplot as plt
-from astropy.stats import sigma_clip
-from astropy.modeling import models, fitting
 
 from fits import get_fits_header, get_fits_data
 
@@ -16,10 +14,16 @@ def blockshaped(arr, nrows=16, ncols=16):
                .swapaxes(1,2)
                .reshape(-1, nrows, ncols))
 
-def counts(data):# dark_0.dat contiene i dati "grezzi" del dark a minore tempo di esposizione.
+def counts(data, mdark = 'dark_0.dat'): # dark_0.dat contiene i dati "grezzi" del dark a minore tempo di esposizione.
+    mdark = ascii.read(mdark)
+    mdark_data = np.array([mdark[k] for k in mdark.keys()])
+    
+    blocks_mdark = blockshaped(mdark_data)
     blocks = blockshaped(data)
+    difference = blocks - blocks_mdark # sottraggo a ogni blocco il suo corrispettivo blocco dark_0
+
     tab_counts = Table()
-    tab_counts['counts_avg'] = np.array([np.mean(n) for n in blocks.T]) # Transposed matrix (nota per me)
+    tab_counts['counts_avg'] = np.array([np.mean(n) for n in difference.T]) # Transposed matrix (nota per me)
     return(tab_counts)
 
 
@@ -44,57 +48,49 @@ def linearity(filenames):
     return(counts_table, time_table)
 
 
-def plot(filenames, dark = True): #STX
+def plot(filenames): #STX
     counts_table, time_table  = linearity(filenames)
     
     time = np.squeeze(np.array([time_table[k] for k in time_table.keys()]))
     counts = np.array([counts_table[k] for k in counts_table.keys()])
 
-    if dark == True:
-        fig1,ax1 = plt.subplots()
-        fig2,ax2 = plt.subplots()        
-        for n in counts.T:  #Transposed 
-            sigma = np.std(n, dtype= np.float64)
-            ax1.errorbar(time, n, yerr = sigma,
-                        fmt = ' ',
-                        marker = 'o',
-                        markersize = 3,
-                        elinewidth=1)
-                       
-            ax1.set_xlabel('Time (s)')
-            ax1.set_ylabel('Counts')
-            ax1.legend(['Block1', 'Block2', 'Block3', 'Block4', 'Block5', 'Block6',
-                        'Block7', 'Block8', 'Block9', 'Block10', 'Block11',
-                        'Block12', 'Block13', 'Block14', 'Block14', 'Block16'])
+    fig1,ax1 = plt.subplots()
+    fig2,ax2 = plt.subplots()
+    for n in counts.T:  #Transposed 
+        sigma = np.std(n, dtype= np.float64)
+        ax1.errorbar(time, n, yerr = sigma,
+                    fmt = ' ',
+                    marker = 'o',
+                    markersize = 3,
+                    elinewidth=1)
+                   
+        ax1.set_xlabel('Time (s)')
+        ax1.set_ylabel('Counts (sub Dark1.fits)')
+        ax1.legend(['Block1', 'Block2', 'Block3', 'Block4', 'Block5', 'Block6',
+                    'Block7', 'Block8', 'Block9', 'Block10', 'Block11',
+                    'Block12', 'Block13', 'Block14', 'Block14', 'Block16'])
 
-            norm = n/max(n)
-            sigma_norm = np.std(norm, dtype=np.float64)
-            ax2.errorbar(time, norm, yerr = sigma_norm,
-                        fmt = ' ',
-                        marker = 'o',
-                        markersize = 3,
-                        elinewidth=1)
-               
-            ax2.set_xlabel('Time (s)')
-            ax2.set_ylabel('Counts')
-            ax2.legend(['Block1', 'Block2', 'Block3', 'Block4', 'Block5', 'Block6',
-                        'Block7', 'Block8', 'Block9', 'Block10', 'Block11',
-                        'Block12', 'Block13', 'Block14', 'Block14', 'Block16'])
-
-    else:
-        plt.figure()
-        fit = fitting.LinearLSQFitter()
-        or_fit = fitting.FittingWithOutlierRemoval(fit, sigma_clip, niter=3, sigma=2)
-        line_init = models.Linear1D()
-        
-        for n in counts.T:
-            fitted_line, mask = or_fit(line_init, time, n)
-            filtered_data = np.ma.masked_array(n, mask=mask)
-            plt.plot(time,n, 'ko', fillstyle='none')
-            plt.plot(time, filtered_data, 'ko')
-            plt.plot(time, fitted_line(time), 'k-')
-            plt.xlabel('Time (s)')
-            plt.ylabel('Counts')
+        norm = n/max(n)
+        sigma_norm = np.std(norm, dtype=np.float64)
+        ax2.errorbar(time, norm, yerr = sigma_norm,
+                    fmt = ' ',
+                    marker = 'o',
+                    markersize = 3,
+                    elinewidth=1)
+           
+        ax2.set_xlabel('Time (s)')
+        ax2.set_ylabel('Normalized Counts (sub Dark1.fits)')
+        ax2.legend(['Block1', 'Block2', 'Block3', 'Block4', 'Block5', 'Block6',
+                    'Block7', 'Block8', 'Block9', 'Block10', 'Block11',
+                    'Block12', 'Block13', 'Block14', 'Block14', 'Block16'])
+# Ho assunto che i blocchi siano in ordine, ovvero da sinistra a destra e dall'alto in basso.
+# A favore di questa ipotesi, ho visto che il primo elemento di "data" e il primo elemento di blocks[0]
+# coincidono. Se ciò fosse vero, l'elemento più in alto sarebbe di un quadrato centrale, il 10.
+# Mi pare che abbia senso, dovrebbero essere i quadrati dal flusso maggiore, poiché negli angolini si ha
+# sempre un flusso minore.
+# Ho normalizzato in vista del calcolo della DC, ma con i dati negativi chiaramente l'intercetta
+# sarà negativa, quindi ho qualche dubbio sulla validità del risultato: ha senso, con questo andamento, dare
+# una stima della corrente? 
 
     return(plt.show())
 
