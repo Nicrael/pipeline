@@ -4,8 +4,14 @@
 # System modules
 from astropy import log
 from astropy.io import fits
-import fitsio
 
+try:
+    import fitsio
+    fast = True
+except ImprtError:
+    log.warn("fitsio not found: cannot use fast mode.")
+    fast = False
+    
 # Local modules
 
 
@@ -42,7 +48,7 @@ def get_fits_header(filename, fast=False):
     return header
 
 
-def get_fits_data(filename, fast=True):
+def get_fits_data(filename, fast=fast):
     '''
     Return the data of the fits file.
     If fitsio=True, use fitsio.
