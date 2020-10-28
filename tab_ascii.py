@@ -30,7 +30,6 @@ def counts(filename,
            bias8='3_CCD_Image_103.fits',
            bias9='3_CCD_Image_152.fits'):
     
-    mean = np.mean(get_fits_data(filename))
     header = get_fits_header(filename)
 
     camera = header['INSTRUME']
@@ -38,18 +37,18 @@ def counts(filename,
 
     if camera == 'Atik Cameras':
         if temp<=0.3:
-            mean_sub = mean-np.mean(get_fits_data(bias1))
+            mean_sub = np.mean(get_fits_data(filename)[1007:3007, 631:2040])-np.mean(get_fits_data(bias1))
         elif 0.3<temp<=1.3:
-            mean_sub = mean-np.mean(get_fits_data(bias2))
+            mean_sub = np.mean(get_fits_data(filename)[1007:3007, 631:2040])-np.mean(get_fits_data(bias2))
         else:
-            mean_sub = mean-np.mean(get_fits_data(bias3)) #intorno a 3
+            mean_sub = np.mean(get_fits_data(filename)[1007:3007, 631:2040])-np.mean(get_fits_data(bias3)) #intorno a 3
     elif camera == 'SBIG STL-11000 3 CCD Camera w/ AO':
         if -5.5<=temp<=-3.7:
-            mean_sub = mean-np.mean(get_fits_data(bias4))
+            mean_sub = np.mean(get_fits_data(filename)[500:3508, 500:2172])-np.mean(get_fits_data(bias4))
         elif temp<-5.5:
-            mean_sub = mean-np.mean(get_fits_data(bias5))
+            mean_sub = np.mean(get_fits_data(filename)[500:3508, 500:2172])-np.mean(get_fits_data(bias5))
         else:
-            mean_sub = mean-np.mean(get_fits_data(bias6))
+            mean_sub = np.mean(get_fits_data(filename)[500:3508, 500:2172])-np.mean(get_fits_data(bias6))
     elif camera == 'SBIG STX-16801 3 CCD Camera w/ AO':
         if temp<=-19.3:
             mean_sub = np.mean(get_fits_data(filename)[500:3500, 500:3500])-np.mean(get_fits_data(bias7))
@@ -58,9 +57,7 @@ def counts(filename,
         else:
             mean_sub = np.mean(get_fits_data(filename)[500:3500, 500:3500])-np.mean(get_fits_data(bias9))
             
-    return(mean_sub)        
-
-            
+    return(mean_sub)
 
 
 def tables(filenames):
@@ -99,7 +96,7 @@ def tab_ascii(filenames):
     tabascii = Table([file_arr, time_arr, jd_arr, counts_arr, temp_arr, cam_arr],
                      names=['file name', 'time (s)', 'time (jd)', 'counts (mean)',
                             'temperature (°C)', 'camera'])
-    ascii.write(tabascii, 'Dark_sub_values',
+    ascii.write(tabascii, 'Flat_sub_values',
                 format='fixed_width',
                 overwrite=True)
     return(tabascii)

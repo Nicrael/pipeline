@@ -25,7 +25,7 @@ def ins_temp(filename):
 
 def counts(filename, bias1='1_CCD_Image_34.fits',
            bias2='1_CCD_Image_47.fits',
-           bias3='1_CCD_Image_75.fits',
+           bias3='1_CCD_Image_76.fits',
            bias4='2_CCD_Image_191.fits',
            bias5='2_CCD_Image_244.fits',
            bias6='2_CCD_Image_277.fits',
@@ -34,26 +34,24 @@ def counts(filename, bias1='1_CCD_Image_34.fits',
            bias9='3_CCD_Image_152.fits'):
 
     header = get_fits_header(filename)
-    data = get_fits_data(filename)
-    mean = np.mean(data)
 
     camera = header['INSTRUME']
     temp = header['CCD-TEMP']
 
     if camera == 'Atik Cameras':
         if temp<=0.3:
-            mean_sub = mean-np.mean(get_fits_data(bias1))
+            mean_sub = np.mean(get_fits_data(filename)[1007:3007, 631:2040])-np.mean(get_fits_data(bias1))
         elif 0.3<temp<=1.3:
-            mean_sub = mean-np.mean(get_fits_data(bias2))
+            mean_sub = np.mean(get_fits_data(filename)[1007:3007, 631:2040])-np.mean(get_fits_data(bias2))
         else:
-            mean_sub = mean-np.mean(get_fits_data(bias3)) #intorno a 3
+            mean_sub = np.mean(get_fits_data(filename)[1007:3007, 631:2040])-np.mean(get_fits_data(bias3)) #intorno a 3
     elif camera == 'SBIG STL-11000 3 CCD Camera w/ AO':
         if -5.5<=temp<=-3.7:
-            mean_sub = mean-np.mean(get_fits_data(bias4))
+            mean_sub = np.mean(get_fits_data(filename)[500:3508, 500:2172])-np.mean(get_fits_data(bias4))
         elif temp<-5.5:
-            mean_sub = mean-np.mean(get_fits_data(bias5))
+            mean_sub = np.mean(get_fits_data(filename)[500:3508, 500:2172])-np.mean(get_fits_data(bias5))
         else:
-            mean_sub = mean-np.mean(get_fits_data(bias6))
+            mean_sub = np.mean(get_fits_data(filename)[500:3508, 500:2172])-np.mean(get_fits_data(bias6))
     elif camera == 'SBIG STX-16801 3 CCD Camera w/ AO':
         if temp<=-19.3:
             mean_sub = np.mean(get_fits_data(filename)[500:3500, 500:3500])-np.mean(get_fits_data(bias7))
@@ -100,9 +98,6 @@ def plot(filenames, Flat = True):
     else:    
         time = sorted(np.squeeze(np.array([time_table[k] for k in time_table.keys()])))
 
-        slope, intercept, r_value, p_value, std_err = linregress(time, counts_unique)
-        print(intercept)
-
         fig1,ax1 = plt.subplots()
         counts_norm = counts_unique/max(counts_unique)
         ax1.errorbar(time, counts_norm,
@@ -117,11 +112,12 @@ def plot(filenames, Flat = True):
         ax1.legend(['Block1', 'Block2', 'Block3', 'Block4', 'Block5', 'Block6',
                     'Block7', 'Block8', 'Block9', 'Block10', 'Block11',
                     'Block12', 'Block13', 'Block14', 'Block14', 'Block16'])
-##            plt.title('Atik T=1 Dark')
-##            plt.savefig('Atik_T=1_Dark.pdf')
 
-##            sigma_norm = np.std(norm, dtype=np.float64)
+        slope, intercept, r_value, p_value, std_err = linregress(time, counts_norm)
+
+##        plt.title('Atik T=3 Dark - Normalized counts')
+##        plt.savefig('Atik_T=3_Dark.pdf')
            
-    return(plt.show())
+    return(intercept, plt.show())
     
     
