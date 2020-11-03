@@ -15,7 +15,7 @@ class dfits():
     dfits | fitsort simple clone.
     Uses fast fitsio method by default.
     '''
-    def __init__(self, filenames, fast=False):
+    def __init__(self, filenames, fast=fast):
         filenames = sorted(filenames)
         self.filenames = filenames
         log.info(f"dfits {len(filenames)} files. It can take some seconds.")
@@ -150,7 +150,6 @@ class minidb():
         self.data = self.table.group_by(keys)
         self.unique = self.data.groups.keys.as_array().tolist()
         return self #.data.groups
-
 
     def names_for(self, keys):
         import numpy as np
