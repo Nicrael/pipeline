@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+'''
+Reduction routines
+'''
+
 # System modules
 from astropy import log
 from astropy.io import ascii
@@ -8,9 +12,9 @@ from astropy.table import Table
 import numpy as np
 
 # Local modules
-from sorters import dfits  # apparently, no cross imports
+from sorters import Dfits  # apparently, no cross imports
 from fits import get_fits_data, write_fits
-from fill_header import init_observatory, observatory
+from fill_header import init_observatory, Observatory
 
 from naming import output_file, hist
 
@@ -43,7 +47,7 @@ def generic(filenames, keys=[], normalize=False, method=None,
 
     log.info(f'fitsort {len(filenames)} filenames per {keys}')
 
-    df = dfits(filenames)
+    df = Dfits(filenames)
     sortlist = df.fitsort(keys)
     heads = df.heads
 

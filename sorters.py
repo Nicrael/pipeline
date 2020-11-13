@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+'''
+Sorter class to mock dfits fitsort behavior
+'''
+
 # System modules
-from astropy import log
 import sys
+from astropy import log
 
 # Local modules
 from fits import get_fits_header
 
-fast = True if 'fitsio' in sys.modules else False
+FAST = bool('fitsio' in sys.modules)
 
-
-class dfits():
+class Dfits():
     '''
     dfits | fitsort simple clone.
     Uses fast fitsio method by default.
     '''
 
-    def __init__(self, filenames, fast=fast):
+    def __init__(self, filenames, fast=FAST):
         filenames = sorted(filenames)
         self.filenames = filenames
-        log.info(f"dfits {len(filenames)} files. It can take some seconds.")
+        log.info("dfits {lfil} files. It can take some seconds.", lfil=len(filenames))
         self.heads = [get_fits_header(f, fast=fast) for f in filenames]
         for i, p in enumerate(filenames):
             self.heads[i]["FULLPATH"] = filenames[i]
@@ -45,119 +48,119 @@ class dfits():
         return gr
 
 
-def sort(dict_list, keys):
-    '''
-    Sort a dict list by a list of keys.
-    Useful for sorting a table_header by JD
-    '''
-    sort_by = [keys] if isinstance(keys, str) else keys
-    def first(x): return (tuple(x[s] for s in sort_by))
-    dict_list = sorted(dict_list, key=first)
+# def sort(dict_list, keys):
+#     '''
+#     Sort a dict list by a list of keys.
+#     Useful for sorting a table_header by JD
+#     '''
+#     sort_by = [keys] if isinstance(keys, str) else keys
+#     def first(x): return (tuple(x[s] for s in sort_by))
+#     dict_list = sorted(dict_list, key=first)
 
-    return dict_list
-
-
-def make_table(filenames, sort_by=None):
-    '''
-    Take a list of fits file names and stacks the headers
-    in a dict list. [{FILTER:V, EXPTIME:10}, {FILTER:R, EXPTIME:10}]
-    It adds the full path filename.
-    Can be sorted by a list of keywords, for example JD.
-    '''
-    from astropy.table import Table
-
-    filenames = sorted(filenames)
-
-    log.info(f"Stacking {len(filenames)} in a table. It can take a while...")
-    heads = [get_fits_header(f, fast=fast) for f in filenames]
-    for i, p in enumerate(filenames):
-        heads[i]["FULLPATH"] = filenames[i]
-
-    tabled_heads = [dict([h["name"], h["value"]]
-                         for h in H.records()) for H in heads]
-
-    log.info("Adding a FULLPATH keyword to retrieve the original file path...")
-    full_path = [{'FULLPATH': f} for f in filenames]
-    tabled_heads = [{**u, **v} for u, v in zip(tabled_heads, full_path)]
-
-    table = Table(tabled_heads)
-
-    if sort_by:
-        table.sort(sort_by)
-
-    return table
+#     return dict_list
 
 
-def group(table_dict, keys, show=None):
-    '''
-    Take dict list, for example of stacked headers, and extract
-    values from a kist of keywords. Can show separated values.
-    For example sort unique FILTER keywords and show corresponding JDs.
-    '''
-    import itertools as it
+# def make_table(filenames, sort_by=None):
+#     '''
+#     Take a list of fits file names and stacks the headers
+#     in a dict list. [{FILTER:V, EXPTIME:10}, {FILTER:R, EXPTIME:10}]
+#     It adds the full path filename.
+#     Can be sorted by a list of keywords, for example JD.
+#     '''
+#     from astropy.table import Table
 
-    tab = table_dict
+#     filenames = sorted(filenames)
 
-    sort_by = [keys] if isinstance(keys, str) else keys
-    def first(x): return (tuple(x[s] for s in sort_by))
-    table_sorted = sorted(tab, key=first)
-    result = [list(g) for k, g in it.groupby(table_sorted, first)]
+#     log.info(f"Stacking {len(filenames)} in a table. It can take a while...")
+#     heads = [get_fits_header(f, fast=fast) for f in filenames]
+#     for i, p in enumerate(filenames):
+#         heads[i]["FULLPATH"] = filenames[i]
 
-    # Avoiding single element tuples
-    if isinstance(keys, list) and len(keys) != 1:  # ["A","B"]
-        values = [tuple(d.get(k) for k in keys) for d in tab]
-    elif isinstance(keys, list) and len(keys) == 1:  # ["A"]
-        values = [d[keys[0]] for d in tab]
-    else:  # "A"
-        values = [d[keys] for d in tab]
+#     tabled_heads = [dict([h["name"], h["value"]]
+#                          for h in H.records()) for H in heads]
 
-    names = show
-    if not names:
-        res3 = values
-    else:
-        # Avoiding single element tuples
-        if isinstance(names, list) and len(names) != 1:  # ["C","D"]
-            res2 = [[tuple(x[n] for n in names) for x in r] for r in result]
-        elif isinstance(names, list) and len(names) == 1:  # ["C"]
-            res2 = [[x.get(names[0]) for x in r] for r in result]
-        else:  # "D"
-            res2 = [[x.get(names) for x in r] for r in result]
+#     log.info("Adding a FULLPATH keyword to retrieve the original file path...")
+#     full_path = [{'FULLPATH': f} for f in filenames]
+#     tabled_heads = [{**u, **v} for u, v in zip(tabled_heads, full_path)]
 
-        res3 = dict(zip(set(values), res2))
+#     table = Table(tabled_heads)
 
-    return res3
+#     if sort_by:
+#         table.sort(sort_by)
+
+#     return table
 
 
-class minidb():
-    from astropy.table import Table
+# def group(table_dict, keys, show=None):
+#     '''
+#     Take dict list, for example of stacked headers, and extract
+#     values from a kist of keywords. Can show separated values.
+#     For example sort unique FILTER keywords and show corresponding JDs.
+#     '''
+#     import itertools as it
 
-    def __init__(self, filenames):
-        filenames = sorted(filenames)
-        self.filenames = filenames
-        self.heads = [get_fits_header(f, fast=fast) for f in filenames]
-        for i, p in enumerate(filenames):
-            self.heads[i]["FULLPATH"] = filenames[i]
-        keys = self.heads[0].keys()
-        values = [[h.get(k) for h in self.heads] for k in keys]
-        dic = dict(zip(keys, values))
-        # dic["FULLPATH"] = filenames # adding filename
-        self.dic = dic
-        self.table = Table(dic)  # original
-        self.data = self.table
-        self.unique = None
-        self.names = None
+#     tab = table_dict
 
-    def group_by(self, keys):
-        # if isinstance(keys, str):
-        #     keys = [keys]
-        self.data = self.table.group_by(keys)
-        self.unique = self.data.groups.keys.as_array().tolist()
-        return self  # .data.groups
+#     sort_by = [keys] if isinstance(keys, str) else keys
+#     def first(x): return (tuple(x[s] for s in sort_by))
+#     table_sorted = sorted(tab, key=first)
+#     result = [list(g) for k, g in it.groupby(table_sorted, first)]
 
-    def names_for(self, keys):
-        import numpy as np
+#     # Avoiding single element tuples
+#     if isinstance(keys, list) and len(keys) != 1:  # ["A","B"]
+#         values = [tuple(d.get(k) for k in keys) for d in tab]
+#     elif isinstance(keys, list) and len(keys) == 1:  # ["A"]
+#         values = [d[keys[0]] for d in tab]
+#     else:  # "A"
+#         values = [d[keys] for d in tab]
 
-        print(self.data)
-        self.names = np.array(self.data[keys]).tolist()
-        #self.data = self.table[keys]
-        return self.names
+#     names = show
+#     if not names:
+#         res3 = values
+#     else:
+#         # Avoiding single element tuples
+#         if isinstance(names, list) and len(names) != 1:  # ["C","D"]
+#             res2 = [[tuple(x[n] for n in names) for x in r] for r in result]
+#         elif isinstance(names, list) and len(names) == 1:  # ["C"]
+#             res2 = [[x.get(names[0]) for x in r] for r in result]
+#         else:  # "D"
+#             res2 = [[x.get(names) for x in r] for r in result]
+
+#         res3 = dict(zip(set(values), res2))
+
+#     return res3
+
+
+# class minidb():
+#     from astropy.table import Table
+
+#     def __init__(self, filenames):
+#         filenames = sorted(filenames)
+#         self.filenames = filenames
+#         self.heads = [get_fits_header(f, fast=fast) for f in filenames]
+#         for i, p in enumerate(filenames):
+#             self.heads[i]["FULLPATH"] = filenames[i]
+#         keys = self.heads[0].keys()
+#         values = [[h.get(k) for h in self.heads] for k in keys]
+#         dic = dict(zip(keys, values))
+#         # dic["FULLPATH"] = filenames # adding filename
+#         self.dic = dic
+#         self.table = Table(dic)  # original
+#         self.data = self.table
+#         self.unique = None
+#         self.names = None
+
+#     def group_by(self, keys):
+#         # if isinstance(keys, str):
+#         #     keys = [keys]
+#         self.data = self.table.group_by(keys)
+#         self.unique = self.data.groups.keys.as_array().tolist()
+#         return self  # .data.groups
+
+#     def names_for(self, keys):
+#         import numpy as np
+
+#         print(self.data)
+#         self.names = np.array(self.data[keys]).tolist()
+#         #self.data = self.table[keys]
+#         return self.names
