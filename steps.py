@@ -89,16 +89,15 @@ correct_image(objects, keys, mbias=mbias, mflat=mflat, new_header="Mexman")
 
 solver("*CLEAN*fits")
 
-solved = sorted(glob.glob("arp-data-2020-05-15T12:59:46/solved/*CLEAN*.new")) 
-datas = [get_fits_header(f, fast=False)["MJD-OBS"] for f in solved] 
-airmass = [get_fits_header(f, fast=False)["AIRMASS"] for f in solved] 
-tables = apphot(solved, r=5, r_in=15.5, r_out=25, display=False)
+solved = sorted(glob.glob("solved/*CLEAN*.new")) 
+datas = [get_fits_header(f, fast=True)["MJD-OBS"] for f in solved] 
+airmass = [get_fits_header(f, fast=True)["AIRMASS"] for f in solved] 
+tables = apphot(solved, r=6, r_in=15.5, r_out=25)
+
 tabellone = np.array([tables[0][k] for k in tables[0].keys() ])
 tabellone = np.insert(tabellone,  0, [datas, airmass], axis=1)
-ascii.write( tabellone, "tabellone.txt", overwrite=True) 
-#errorone = np.array([tables[1][k] for k in tables[1].keys() ])
-#ascii.write( np.concatenate((tabellone,errorone), axis=1), "tabellone.txt", overwrite=True) 
-
+errorone = np.array([tables[1][k] for k in tables[1].keys() ])
+ascii.write( np.concatenate((tabellone,errorone),axis=1), "tabellone.txt", overwrite=True)
 
 
 #plot f u ($1-58800):(-2.5*log10($5/($4+$14+$16))) w lp pt 7, g u ($2-2458800):($8+2.5*log10(10**(-$10*.4)+10**(-$12*.4)+10**(-$13*0.4) ))-0.000 w lp pt 7 lc rgb "orange"
