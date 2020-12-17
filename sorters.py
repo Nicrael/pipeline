@@ -23,8 +23,9 @@ class Dfits():
     def __init__(self, filenames, fast=FAST):
         filenames = sorted(filenames)
         self.filenames = filenames
-        log.info("dfits {lfil} files. It can take some seconds.", lfil=len(filenames))
-        self.heads = [get_fits_header(f, fast=fast) for f in filenames]
+        lfil=len(filenames)
+        log.info(f"dfits {lfil} files. It can take some seconds.")
+        self.heads = [get_fits_header(f, fast=False) for f in filenames]
         for i, p in enumerate(filenames):
             self.heads[i]["FULLPATH"] = filenames[i]
         self.data = self.heads
@@ -72,7 +73,7 @@ class Dfits():
 #     filenames = sorted(filenames)
 
 #     log.info(f"Stacking {len(filenames)} in a table. It can take a while...")
-#     heads = [get_fits_header(f, fast=fast) for f in filenames]
+#     heads = [get_fits_header(f, fast=False) for f in filenames]
 #     for i, p in enumerate(filenames):
 #         heads[i]["FULLPATH"] = filenames[i]
 

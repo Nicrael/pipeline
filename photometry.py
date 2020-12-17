@@ -43,8 +43,7 @@ def ron_gain_dark(my_instr="Mexman"):
     gain = instrument['gain'] or 1
     ron = instrument['ron'] or 0
     dark_current = instrument['dark_current'] or 0
-    log.info("Gain: {gain}, RON: {ron}, Dark current: {dark_current}",
-             gain=gain, ron=ron, dark_current=dark_current)
+    log.info(f"Gain: {gain}, RON: {ron}, Dark current: {dark_current}")
 
     return ron, gain, dark_current
 
@@ -244,16 +243,15 @@ def apphot(filenames, reference=0, display=DISPLAY, r=False, r_in=False, r_out=F
                 d.set(
                     "region", f"text {aper.positions[0]}, {aper.positions[1]} "+"{"+str(i)+"}")
 
-            for a in apers[1].to_pixel(wcs):
+            for aper in apers[1].to_pixel(wcs):
                 circ = f'circle({aper.positions[0]}, {aper.positions[1]}, {aper.r_in})'
                 d.set("regions", circ)
                 circ = f'circle({aper.positions[0]}, {aper.positions[1]}, {aper.r_out})'
                 d.set("regions", circ)
 
-        tables.add_column(
-            phot_table["residual_aperture_sum"], rename_duplicate=True)
+        tables.add_column(phot_table["residual_aperture_sum"], rename_duplicate=True)
         err_table.add_column(phot_table["error"], rename_duplicate=True)
-        log.info("Done {filename}", filename=filename)
+        log.info(f"Done {filename}")
 
     return tables, err_table
 
@@ -262,7 +260,7 @@ def apphot(filenames, reference=0, display=DISPLAY, r=False, r_in=False, r_out=F
 #     filenames = sorted(filenames)
 #     tables, err_table = apphot(filenames, r=6, r_in=15.5, r_out=25)
 
-#     t = [get_fits_header(f, fast=True)["MJD-OBS"] for f in filenames]
+#     t = [get_fits_header(f)["MJD-OBS"] for f in filenames]
 #     magnitude = np.array([tables[k] for k in tables.keys()])
 #     mag_err = np.array([err_table[k] for k in err_table.keys()])
 #     defot_table = ascii.read(dat_file)

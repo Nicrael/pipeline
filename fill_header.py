@@ -28,7 +28,7 @@ class Observatory():
     '''
 
     def __init__(self, **kwargs):
-        log.info("Set default parameters: {kwargs}", kwargs=kwargs)
+        log.info("Set default parameters: {kwargs}")
 
         # Header keywords with defaults
         self.ra = kwargs.get('ra', 'RA')
@@ -256,7 +256,7 @@ class Observatory():
         #nhd["dec"] = coord.decoord.to_string(sep=":")
         nhd["radesys"] = coord.frame.name.upper()
         nhd["ra"] = coord.ra.deg
-        nhd["dec"] = coord.decoord.deg
+        nhd["dec"] = coord.dec.deg
         # nh["ha"] = sid - coord.ra # MUST NOT BE IN J2000
 
         nhd["alt"] = coord.altaz.alt.deg
@@ -356,7 +356,7 @@ def sethead(head):
 
     diff = fits.HeaderDiff(head, template)
     if diff:
-        log.warning("Not in dictionary:{diff_keywords}", diff_keywords=diff.diff_keywords)
+        log.warning(f"Not in dictionary:{diff.diff_keywords}")
 
     return template
 
@@ -389,7 +389,7 @@ def init_observatory(instrument="Mexman"):
     Init observatory using a json config file.
     '''
 
-    log.info('Loading {instrument}', instrument=instrument)
+    log.info(f'Loading {instrument}')
 
     with open('./instruments.json') as jfile:
         instruments = json.load(jfile)

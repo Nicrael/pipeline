@@ -66,10 +66,9 @@ import numpy as np
 from reduction import master_bias, master_flat, correct_image
 from fits import get_fits_header
 from naming import skeleton
-from sorters import dfits
-from fill_header import observatory, solver, init_observatory
+from sorters import Dfits
+from fill_header import Observatory, solver, init_observatory
 from photometry import apphot
-import glob
 
 skeleton(date=True)
 
@@ -83,20 +82,22 @@ mbias = 'arp.MBIAS.ccdxbin=2.fits'
 master_flat(flats, keys, mbias=mbias)
 
 obj_all = glob.glob("gj3470/*/object/*.fit*")
-objects = dfits(obj_all, fast=True).fitsort(['object']).unique_names_for(('GJ3470',))
+objects = Dfits(obj_all, fast=True).fitsort(['object']).unique_names_for(('GJ3470',))
 mflat = "arp.MFLAT.ccdxbin=2.filter=vacio+V3.fits"
 
 correct_image(objects, keys, mbias=mbias, mflat=mflat, new_header="Mexman")
 
 solver("*CLEAN*fits")
 
-solved = sorted(glob.glob("arp-data-2020-05-19T20:06:35/solved/*CLEAN*.new")) 
-datas = [get_fits_header(f, fast=True)["MJD-OBS"] for f in solved] 
-airmass = [get_fits_header(f, fast=True)["AIRMASS"] for f in solved] 
-tables = apphot(solved, r=6, r_in=15.5, r_out=25)
-tabellone = np.array([tables[k] for k in tables.keys() ])
+solved = sorted(glob.glob("arp-data-2020-05-15T12:59:46/solved/*CLEAN*.new")) 
+datas = [get_fits_header(f, fast=False)["MJD-OBS"] for f in solved] 
+airmass = [get_fits_header(f, fast=False)["AIRMASS"] for f in solved] 
+tables = apphot(solved, r=5, r_in=15.5, r_out=25, display=False)
+tabellone = np.array([tables[0][k] for k in tables[0].keys() ])
 tabellone = np.insert(tabellone,  0, [datas, airmass], axis=1)
-ascii.write( tabellone, "tabellone.txt", overwrite=True)
+ascii.write( tabellone, "tabellone.txt", overwrite=True) 
+#errorone = np.array([tables[1][k] for k in tables[1].keys() ])
+#ascii.write( np.concatenate((tabellone,errorone), axis=1), "tabellone.txt", overwrite=True) 
 
 
 

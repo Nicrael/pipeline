@@ -89,8 +89,20 @@ def closing(keys, value, product, output, counter=False, header=False):
 
     if header:
         # header = heads[0].copy() # TODO choose head per head
+        #print(type(header))
         header.add_history(hist())
-
+        # try:
+        #     header.add_history(hist())
+        #     log.info("astropy fits:", hist())
+        # except:
+        #     log.warn("No astropy fits. trying fitsio")
+        #     try:
+        #         #header.write_record("HISTORY "+hist())
+        #         log.info("fitsio:", hist())
+        #     except:
+        #         log.error("No fitsio")
+            
+            
     text = dict(zip(keys, value)) if keys else None
     outfile = output_file(product=product, text=text, counter=counter)
     write_fits(output, outfile, header=header, fast=False)

@@ -88,6 +88,6 @@ def write_fits(data, output_file, header=None, fast=False):
         else:
             hdu = fits.PrimaryHDU(data)
         hdu.writeto(output_file, overwrite=True, checksum=True)
-
-    log.info("Writing fits file to {output_file}", output_file=output_file)
+        
+    log.info(f"Writing fits file to {output_file}")
     return hdu
